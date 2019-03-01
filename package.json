@@ -1,0 +1,31 @@
+{
+  "name": "contracts",
+  "version": "0.1.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "chain": "ganache-cli",
+    "migrate:dev": "truffle migrate --compile-all --network development",
+    "migrate:ropsten": "truffle migrate --compile-all --network ropsten",
+    "test": "truffle test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-monetize/contracts.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/d-monetize/contracts/issues"
+  },
+  "homepage": "https://github.com/d-monetize/contracts#readme",
+  "devDependencies": {
+    "dotenv": "^6.2.0",
+    "ganache-cli": "^6.3.0",
+    "truffle": "^5.0.5",
+    "truffle-hdwallet-provider": "^1.0.4"
+  }
+}
