@@ -1,7 +1,7 @@
-pragma solidity 0.5.4;
+pragma solidity 0.5.2;
 
 import "./lib/Set.sol";
-import "./PaymentBounty";
+import "./PaymentBounty.sol";
 import "./Subscription.sol";
 
 contract SubscriptionRegistry {
