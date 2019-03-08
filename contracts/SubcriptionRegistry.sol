@@ -7,8 +7,13 @@ import "./Subscription.sol";
 contract SubscriptionRegistry {
   using Set for Set.AddressSet;
 
-  // TODO log token, amount, interval
-  event SubscriptionCreated(address indexed owner, address indexed subscription);
+  event SubscriptionCreated(
+    address indexed owner,
+    address indexed subscription,
+    address indexed token,
+    uint amount,
+    uint interval
+  );
   event SubscriptionDeleted(address indexed owner, address indexed subscription);
   event Subscribed(address indexed subscription, address indexed subscriber);
   event Unsubscribed(address indexed subscription, address indexed subscriber);
@@ -44,7 +49,7 @@ contract SubscriptionRegistry {
 
     ownerToSubs[msg.sender].add(subscription);
 
-    emit SubscriptionCreated(msg.sender, subscription);
+    emit SubscriptionCreated(msg.sender, subscription, token, amount, interval);
   }
 
   function deleteSubscription(address subscription)

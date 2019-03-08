@@ -10,13 +10,14 @@ contract PaymentBounty is Secondary {
   using SafeMath for uint;
   using Set for Set.AddressSet;
 
-  // TODO log token when bounty created
-  event BountyRegistered(address indexed subscription, uint reward);
+  event BountyRegistered(
+    address indexed subscription, address indexed token, uint reward
+  );
   event BountyUnregistered(address indexed subscription);
-  // TODO log token when bounty processed
   event PaymentProcessed(
     address indexed subscription,
     address indexed subscriber,
+    address indexed token,
     uint reward
   );
 
@@ -50,8 +51,10 @@ contract PaymentBounty is Secondary {
       "Subscription is already registered"
     );
 
+    Subscription sub = Subscription(subscription);
+
     require(
-      Subscription(subscription).amount() >= reward,
+      sub.amount() >= reward,
       "Bounty reward cannot exceed subscription amount"
     );
 
@@ -60,7 +63,7 @@ contract PaymentBounty is Secondary {
     subscriptions.add(subscription);
     rewards[subscription] = reward;
 
-    emit BountyRegistered(subscription, reward);
+    emit BountyRegistered(subscription, sub.token(), reward);
   }
 
   function unregister(address subscription)
@@ -118,7 +121,7 @@ contract PaymentBounty is Secondary {
       "token.transfer from tokenSubscription.owner to msg.sender failed"
     );
 
-    emit PaymentProcessed(subscription, subscriber, reward);
+    emit PaymentProcessed(subscription, subscriber, address(token), reward);
   }
 
   function bountyExists(address subscription)  public view returns (bool) {
