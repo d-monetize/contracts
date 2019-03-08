@@ -2,14 +2,18 @@ pragma solidity 0.5.2;
 
 import 'openzeppelin-solidity/contracts/ownership/Secondary.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 import "./lib/Set.sol";
 import "./Subscription.sol";
 
 contract PaymentBounty is Secondary {
+  using SafeMath for uint;
   using Set for Set.AddressSet;
 
+  // TODO log token when bounty created
   event BountyRegistered(address indexed subscription, uint reward);
   event BountyUnregistered(address indexed subscription);
+  // TODO log token when bounty processed
   event PaymentProcessed(
     address indexed subscription,
     address indexed subscriber,
@@ -24,12 +28,20 @@ contract PaymentBounty is Secondary {
     _;
   }
 
-  modifier checkTokenBalanceAfterTransfer(address addr, uint diff) {
-    uint balanceBefore = ERC20(token).balnaceOf(addr);
-    _;
-    uint balanceAfter = ERC20(token).balanceOf(addr);
+  modifier checkTokenBalanceAfterTransfer(
+    address subscription, address tokenOwner
+  ) {
+    Subscription sub = Subscription(subscription);
+    uint reward = rewards[subscription];
 
-    require(balanceAfter.sub(balanceBefore) == diff, "Check token balance failed");
+    uint balanceBefore = ERC20(sub.token()).balanceOf(tokenOwner);
+    _;
+    uint balanceAfter = ERC20(sub.token()).balanceOf(tokenOwner);
+
+    require(
+      balanceAfter.sub(balanceBefore) == reward,
+      "Check token balance failed"
+    );
   }
 
   function register(address subscription, uint reward) public onlyPrimary {
@@ -75,7 +87,7 @@ contract PaymentBounty is Secondary {
 
     ERC20 token = ERC20(sub.token());
 
-    uint allowance = token.allowance(sub.owner(), this);
+    uint allowance = token.allowance(sub.owner(), address(this));
     uint reward = rewards[subscription];
 
     return (
@@ -87,7 +99,7 @@ contract PaymentBounty is Secondary {
   function processPayment(address subscription, address subscriber)
     public
     onlyRegistered(subscription)
-    checkTokenBalanceAfterTransfer(msg.sender, rewards[subscription])
+    checkTokenBalanceAfterTransfer(subscription, msg.sender)
   {
     require(
       canProcessPayment(subscription, subscriber),
@@ -109,7 +121,7 @@ contract PaymentBounty is Secondary {
     emit PaymentProcessed(subscription, subscriber, reward);
   }
 
-  function bountyExists(address subscription)  public view returns (uint) {
+  function bountyExists(address subscription)  public view returns (bool) {
     return subscriptions.has(subscription);
   }
 

@@ -20,11 +20,11 @@ contract Subscription is Secondary, Pausable {
     uint public interval;
 
     Set.AddressSet internal subscribers;
-    mapping(address => uint) subscribedAt;
-    mapping(address => uint) nextPaymentAt;
+    mapping(address => uint) startTimestamps;
+    mapping(address => uint) nextPaymentTimestamps;
 
     modifier checkTokenBalanceAfterTransfer(address addr, uint diff) {
-      uint balanceBefore = ERC20(token).balnaceOf(addr);
+      uint balanceBefore = ERC20(token).balanceOf(addr);
       _;
       uint balanceAfter = ERC20(token).balanceOf(addr);
 
@@ -53,8 +53,8 @@ contract Subscription is Secondary, Pausable {
         require(!isSubscribed(subscriber), "Address is already subscribed");
 
         subscribers.add(subscriber);
-        subscribedAt[subscriber] = block.timestamp;
-        nextPaymentAt[subscriber] = block.timestamp.add(interval);
+        startTimestamps[subscriber] = block.timestamp;
+        nextPaymentTimestamps[subscriber] = block.timestamp.add(interval);
 
         emit Subscribed(subscriber);
     }
@@ -63,8 +63,8 @@ contract Subscription is Secondary, Pausable {
         require(isSubscribed(subscriber), "Not subscribed");
 
         subscribers.remove(subscriber);
-        delete subscribedAt[subscriber];
-        delete nextPaymentAt[subscriber];
+        delete startTimestamps[subscriber];
+        delete nextPaymentTimestamps[subscriber];
 
         emit Unsubscribed(subscriber);
     }
@@ -74,12 +74,12 @@ contract Subscription is Secondary, Pausable {
             return false;
         }
 
-        uint allowance = ERC20(token).allowance(subscriber, this);
+        uint allowance = ERC20(token).allowance(subscriber, address(this));
         uint balance = ERC20(token).balanceOf(subscriber);
 
         return (
             !paused() &&
-            block.timestamp >= nextPaymentAt[subscriber] &&
+            block.timestamp >= nextPaymentTimestamps[subscriber] &&
             allowance >= amount &&
             balance >= amount
         );
@@ -92,12 +92,12 @@ contract Subscription is Secondary, Pausable {
     {
         require(canProcessPayment(subscriber), "Cannot process payment");
 
-        uint start = subscribedAt[subscriber];
+        uint start = startTimestamps[subscriber];
         uint duration = block.timestamp.sub(start);
         uint diff = duration.mod(interval);
         uint nextPayment = block.timestamp.sub(diff).add(interval);
 
-        nextPaymentAt[subscriber] = nextPayment;
+        nextPaymentTimestamps[subscriber] = nextPayment;
 
         require(
           ERC20(token).transferFrom(subscriber, owner, amount),
@@ -108,7 +108,7 @@ contract Subscription is Secondary, Pausable {
     }
 
     function kill() external onlyPrimary {
-        selfdestruct(owner);
+        selfdestruct(address(0));
     }
 
     function getSubscriberCount() public view returns (uint) {
@@ -122,6 +122,10 @@ contract Subscription is Secondary, Pausable {
     {
       subscriber = subscribers.get(index);
 
-      return (subscriber, subscribedAt[subscriber], nextPaymentAt[subscriber]);
+      return (
+        subscriber,
+        startTimestamps[subscriber],
+        nextPaymentTimestamps[subscriber]
+      );
     }
 }

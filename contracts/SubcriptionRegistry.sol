@@ -7,6 +7,7 @@ import "./Subscription.sol";
 contract SubscriptionRegistry {
   using Set for Set.AddressSet;
 
+  // TODO log token, amount, interval
   event SubscriptionCreated(address indexed owner, address indexed subscription);
   event SubscriptionDeleted(address indexed owner, address indexed subscription);
   event Subscribed(address indexed subscription, address indexed subscriber);
@@ -20,7 +21,7 @@ contract SubscriptionRegistry {
 
   modifier onlyRegistered(address subscription) {
     require(
-      Subscription(subscription).owner() == this,
+      Subscription(subscription).owner() == address(this),
       "Subscription is not registered"
     );
     _;
@@ -34,8 +35,10 @@ contract SubscriptionRegistry {
     _;
   }
 
-  function createSubscription() public {
-    Subscription sub = new Subscription();
+  function createSubscription(address token, uint amount, uint interval)
+    public
+  {
+    Subscription sub = new Subscription(msg.sender, token, amount, interval);
 
     address subscription = address(sub);
 
@@ -128,7 +131,7 @@ contract SubscriptionRegistry {
     onlyRegistered(subscription)
     onlySubscriptionOwner(msg.sender, subscription)
   {
-    paymetnBounty.unregister(subscription);
+    paymentBounty.unregister(subscription);
   }
 
   function getSubscriptionByOwnerCount(address owner)
@@ -152,7 +155,7 @@ contract SubscriptionRegistry {
     view
     returns (uint)
   {
-    return subcriberToSubs[subscriber].length();
+    return subscriberToSubs[subscriber].length();
   }
 
   function getSubscriptionBySubscriber(address subscriber, uint index)
@@ -160,6 +163,6 @@ contract SubscriptionRegistry {
     view
     returns (address)
   {
-    return subscriberToSubs[owner].get(index);
+    return subscriberToSubs[subscriber].get(index);
   }
 }
