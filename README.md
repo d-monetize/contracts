@@ -4,6 +4,10 @@
 
 ```shell
 npm run chain
+
+# compile
+npx truffle compile
+
 # From another terminal
 npm run migrate:dev
 ```
