@@ -4,24 +4,25 @@ import 'openzeppelin-solidity/contracts/ownership/Secondary.sol';
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
-import "./lib/Set.sol";
 
 contract Subscription is Secondary, Pausable {
     using SafeMath for uint;
-    using Set for Set.AddressSet;
 
-    event Subscribed(address indexed subscriber);
+    event Subscribed(address indexed subscriber, uint nextPaymentAt);
     event Unsubscribed(address indexed subscriber);
     event PaymentProcessed(address indexed subscriber, uint nextPaymentAt);
 
-    address public owner;
+    address public payable owner;
     address public token;
     uint public amount;
     uint public interval;
 
-    Set.AddressSet internal subscribers;
-    mapping(address => uint) startTimestamps;
-    mapping(address => uint) nextPaymentTimestamps;
+    struct Subscriber {
+      uint subscribedAt;
+      uint nextPaymentAt;
+    }
+
+    mapping(address => Subscriber) public subscribers;
 
     modifier checkTokenBalanceAfterTransfer(address addr, uint diff) {
       uint balanceBefore = ERC20(token).balanceOf(addr);
@@ -44,27 +45,29 @@ contract Subscription is Secondary, Pausable {
         amount =_amount;
         interval = _interval;
     }
+    
+    // TODO only Owner pause / unpause
 
     function isSubscribed(address addr) public view returns (bool) {
-      return subscribers.has(addr);
+      return subscribers[addr].subscribedAt > 0;
     }
 
     function subscribe(address subscriber) public onlyPrimary whenNotPaused {
         require(!isSubscribed(subscriber), "Address is already subscribed");
 
         subscribers.add(subscriber);
-        startTimestamps[subscriber] = block.timestamp;
-        nextPaymentTimestamps[subscriber] = block.timestamp.add(interval);
+        subscribers[subscriber] = Subscriber({
+          subscribedAt: block.timestamp,
+          nextPaymentAt: block.timestamp.add(interval)
+        });
 
-        emit Subscribed(subscriber);
+        emit Subscribed(subscriber, subscribers[subscriber].nextPaymentAt);
     }
 
     function unsubscribe(address subscriber) public onlyPrimary whenNotPaused {
         require(isSubscribed(subscriber), "Not subscribed");
 
-        subscribers.remove(subscriber);
-        delete startTimestamps[subscriber];
-        delete nextPaymentTimestamps[subscriber];
+        delete subscribers[subscriber];
 
         emit Unsubscribed(subscriber);
     }
@@ -79,7 +82,7 @@ contract Subscription is Secondary, Pausable {
 
         return (
             !paused() &&
-            block.timestamp >= nextPaymentTimestamps[subscriber] &&
+            block.timestamp >= subscribers[subscriber].nextPaymentAt &&
             allowance >= amount &&
             balance >= amount
         );
@@ -92,40 +95,22 @@ contract Subscription is Secondary, Pausable {
     {
         require(canProcessPayment(subscriber), "Cannot process payment");
 
-        uint start = startTimestamps[subscriber];
+        uint start = subscribers[subscriber].subscribedAt;
         uint duration = block.timestamp.sub(start);
         uint diff = duration.mod(interval);
-        uint nextPayment = block.timestamp.sub(diff).add(interval);
+        uint nextPaymentAt = block.timestamp.sub(diff).add(interval);
 
-        nextPaymentTimestamps[subscriber] = nextPayment;
+        subscribers[subscriber].nextPaymentAt =  nextPaymentAt;
 
         require(
           ERC20(token).transferFrom(subscriber, owner, amount),
           "Failed to transfer tokens"
         );
 
-        emit PaymentProcessed(subscriber, nextPayment);
+        emit PaymentProcessed(subscriber, nextPaymentAt);
     }
 
     function kill() external onlyPrimary {
-        selfdestruct(address(0));
+        selfdestruct(owner);
     }
-
-    function getSubscriberCount() public view returns (uint) {
-      return subscribers.length();
-    }
-
-    function getSubscriber(uint index)
-      public
-      view
-      returns (address subscriber, uint subscribedAt, uint nextPaymentAt)
-    {
-      subscriber = subscribers.get(index);
-
-      return (
-        subscriber,
-        startTimestamps[subscriber],
-        nextPaymentTimestamps[subscriber]
-      );
-    }
-}
+  }
