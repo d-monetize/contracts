@@ -1,57 +1,62 @@
 pragma solidity 0.5.2;
 
-import 'openzeppelin-solidity/contracts/ownership/Secondary.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
-import "./lib/Set.sol";
 import "./Subscription.sol";
 
-contract PaymentBounty is Secondary {
+// TODO remove me
+// Gas used with lib
+// 1900000
+// without lib
+// 1683462
+
+contract PaymentBounty {
   using SafeMath for uint;
-  using Set for Set.AddressSet;
 
   event BountyRegistered(
     address indexed subscription, address indexed token, uint reward
   );
   event BountyUnregistered(address indexed subscription);
-  event PaymentProcessed(
+  event BountyClaimed(
     address indexed subscription,
     address indexed subscriber,
     address indexed token,
     uint reward
   );
 
-  mapping(address => uint) rewards;
-  Set.AddressSet internal subscriptions;
-
-  modifier onlyRegistered(address subscription) {
-    require(subscriptions.has(subscription), "Subscription is not registered");
-    _;
+  struct Bounty {
+    address owner;
+    uint reward;
   }
+
+  // mapping from subscription to bounty
+  mapping(address => Bounty) public bounties;
 
   modifier checkTokenBalanceAfterTransfer(
     address subscription, address tokenOwner
   ) {
     Subscription sub = Subscription(subscription);
-    uint reward = rewards[subscription];
+    Bounty storage bounty = bounties[subscription];
 
     uint balanceBefore = ERC20(sub.token()).balanceOf(tokenOwner);
     _;
     uint balanceAfter = ERC20(sub.token()).balanceOf(tokenOwner);
 
     require(
-      balanceAfter.sub(balanceBefore) == reward,
+      balanceAfter.sub(balanceBefore) == bounty.reward,
       "Check token balance failed"
     );
   }
 
-  function register(address subscription, uint reward) public onlyPrimary {
+  function register(address subscription, uint reward) public {
     require(
-      !subscriptions.has(subscription),
+      !isRegistered(subscription),
       "Subscription is already registered"
     );
 
     Subscription sub = Subscription(subscription);
+
+    require(msg.sender == sub.owner(), "Not subscription owner");
 
     require(
       sub.amount() >= reward,
@@ -60,38 +65,43 @@ contract PaymentBounty is Secondary {
 
     require(reward > 0, "Reward must be greater than 0");
 
-    subscriptions.add(subscription);
-    rewards[subscription] = reward;
+    bounties[subscription] = Bounty({
+      owner: sub.owner(),
+      reward: reward
+    });
 
     emit BountyRegistered(subscription, sub.token(), reward);
   }
 
-  function unregister(address subscription)
-    public
-    onlyPrimary
-    onlyRegistered(subscription)
-  {
-    subscriptions.remove(subscription);
-    delete rewards[subscription];
+  function unregister(address subscription) public {
+    require(isRegistered(subscription), "Subscription is not registered");
+
+    Bounty bounty = bounties[subscription];
+
+    require(msg.sender == bounty.owner, "Not subscription owner");
+
+    delete rbounties[subscription];
 
     emit BountyUnregistered(subscription);
   }
 
-  function canProcessPayment(address subscription, address subscriber)
+  function canClaimBounty(address subscription, address subscriber)
     public
     view
     returns (bool)
   {
-    if (!subscriptions.has(subscription)) {
+    if (!isRegistered(subscription)) {
       return false;
     }
+
+    // TODO if subscription does not exist return false
 
     Subscription sub = Subscription(subscription);
 
     ERC20 token = ERC20(sub.token());
 
     uint allowance = token.allowance(sub.owner(), address(this));
-    uint reward = rewards[subscription];
+    uint reward = bounties[subscription].reward;
 
     return (
       allowance >= reward &&
@@ -99,13 +109,12 @@ contract PaymentBounty is Secondary {
     );
   }
 
-  function processPayment(address subscription, address subscriber)
+  function claimBounty(address subscription, address subscriber)
     public
-    onlyRegistered(subscription)
     checkTokenBalanceAfterTransfer(subscription, msg.sender)
   {
     require(
-      canProcessPayment(subscription, subscriber),
+      canClaimBounty(subscription, subscriber),
       "Cannot process payment"
     );
 
@@ -114,33 +123,17 @@ contract PaymentBounty is Secondary {
 
     sub.processPayment(subscriber);
 
-    uint reward = rewards[subscription];
+    uint reward = bounties[subscription].reward;
 
     require(
       token.transferFrom(sub.owner(), msg.sender, reward),
       "token.transfer from tokenSubscription.owner to msg.sender failed"
     );
 
-    emit PaymentProcessed(subscription, subscriber, address(token), reward);
+    emit BountyClaimed(subscription, subscriber, address(token), reward);
   }
 
-  function bountyExists(address subscription)  public view returns (bool) {
-    return subscriptions.has(subscription);
-  }
-
-  function getBountyCount() public view returns (uint) {
-    return subscriptions.length();
-  }
-
-  function getBounty(uint index)
-    public
-    view
-    returns
-    (address subscription, uint reward)
-  {
-    subscription = subscriptions.get(index);
-    reward = rewards[subscription];
-
-    return (subscription, reward);
+  function isRegistered(address subscription)  public view returns (bool) {
+    return bounties[subscription].reward > 0;
   }
 }
