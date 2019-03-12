@@ -1,12 +1,11 @@
 pragma solidity 0.5.2;
 
-import "./lib/Set.sol";
-import "./PaymentBounty.sol";
 import "./Subscription.sol";
 
+// TODO remove me
+// gas used with lib (without init PaymentBounty)
+// 5043949
 contract SubscriptionRegistry {
-  using Set for Set.AddressSet;
-
   event SubscriptionCreated(
     address indexed owner,
     address indexed subscription,
@@ -14,28 +13,35 @@ contract SubscriptionRegistry {
     uint amount,
     uint interval
   );
-  event SubscriptionDeleted(address indexed owner, address indexed subscription);
-  event Subscribed(address indexed subscription, address indexed subscriber);
-  event Unsubscribed(address indexed subscription, address indexed subscriber);
+  event SubscriptionDeleted(
+    address indexed owner,
+    address indexed subscription
+  );
+  event Subscribed(
+    address indexed owner,
+    address indexed subscription,
+    address indexed subscriber
+  );
+  event Unsubscribed(
+    address indexed owner,
+    address indexed subscription,
+    address indexed subscriber
+  );
 
-  PaymentBounty public paymentBounty = new PaymentBounty();
+  mapping(address => address) private ownerOf;
 
-  mapping(address => Set.AddressSet) private ownerToSubs;
-  mapping(address => Set.AddressSet) private subscriberToSubs;
-  mapping(address => bool) public deletedSubs;
-
-  modifier onlyRegistered(address subscription) {
+  modifier onlySubscriptionOwner(address owner, address subscription) {
     require(
-      Subscription(subscription).owner() == address(this),
-      "Subscription is not registered"
+      ownerOf[subscription] == owner,
+      "Not the owner of subscripiton"
     );
     _;
   }
 
-  modifier onlySubscriptionOwner(address owner, address subscription) {
+  modifier onlyRegistered(address subscription) {
     require(
-      ownerToSubs[owner].has(subscription),
-      "Not the owner of subscripiton"
+      ownerOf[subscription] != address(0),
+      "Subscription is not registered"
     );
     _;
   }
@@ -46,128 +52,41 @@ contract SubscriptionRegistry {
     Subscription sub = new Subscription(msg.sender, token, amount, interval);
 
     address subscription = address(sub);
-
-    ownerToSubs[msg.sender].add(subscription);
+    ownerOf[subscription] = msg.sender;
 
     emit SubscriptionCreated(msg.sender, subscription, token, amount, interval);
   }
 
   function deleteSubscription(address subscription)
     public
-    onlyRegistered(subscription)
     onlySubscriptionOwner(msg.sender, subscription)
   {
     Subscription sub = Subscription(subscription);
 
-    ownerToSubs[msg.sender].remove(subscription);
-    deletedSubs[subscription] = true;
+    delete onwerOf[subscription];
     // TODO error handle when kill fails
     sub.kill();
-
-    if (paymentBounty.bountyExists(subscription)) {
-      paymentBounty.unregister(subscription);
-    }
 
     emit SubscriptionDeleted(msg.sender, subscription);
   }
 
-  function pauseSubscription(address subscription)
-    public
-    onlyRegistered(subscription)
-    onlySubscriptionOwner(msg.sender, subscription)
-  {
-    Subscription sub = Subscription(subscription);
-    sub.pause();
-  }
-
-  function unpauseSubscription(address subscription)
-    public
-    onlyRegistered(subscription)
-    onlySubscriptionOwner(msg.sender, subscription)
-  {
-    Subscription sub = Subscription(subscription);
-    sub.unpause();
-  }
-
   function subscribe(address subscription) public onlyRegistered(subscription) {
-    require(
-      !subscriberToSubs[msg.sender].has(subscription),
-      "Already subscribed"
-    );
-
     Subscription sub = Subscription(subscription);
 
-    subscriberToSubs[msg.sender].add(subscription);
     sub.subscribe(msg.sender);
 
-    emit Subscribed(subscription, msg.sender);
+    emit Subscribed(sub.owner(), subscription, msg.sender);
   }
 
-  function unsubscribe(address subscription) public {
-    // TODO what happens if contract is initialized at non- existing contract address
+  function unsubscribe(address subscription)
+    public
+    onlyRegistered(subscription)
+  {
+    // TODO what happens if contract is initialized at non-existing or deleteed dcontract address
     Subscription sub = Subscription(subscription);
 
-    require(
-      sub.owner() == address(this) || deletedSubs[subscription],
-      "Subscription not registered nor deleted"
-    );
+    sub.unsubscribe(msg.sender);
 
-    require(subscriberToSubs[msg.sender].has(subscription), "Not subscribed");
-
-    subscriberToSubs[msg.sender].remove(subscription);
-
-    if (!deletedSubs[subscription]) {
-      sub.unsubscribe(msg.sender);
-    }
-
-    emit Unsubscribed(subscription, msg.sender);
-  }
-
-  function registerBounty(address subscription, uint reward)
-    public
-    onlyRegistered(subscription)
-    onlySubscriptionOwner(msg.sender, subscription)
-  {
-    paymentBounty.register(subscription, reward);
-  }
-
-  function unregisterBounty(address subscription)
-    public
-    onlyRegistered(subscription)
-    onlySubscriptionOwner(msg.sender, subscription)
-  {
-    paymentBounty.unregister(subscription);
-  }
-
-  function getSubscriptionByOwnerCount(address owner)
-    public
-    view
-    returns (uint)
-  {
-    return ownerToSubs[owner].length();
-  }
-
-  function getSubscriptionByOwner(address owner, uint index)
-    public
-    view
-    returns (address)
-  {
-    return ownerToSubs[owner].get(index);
-  }
-
-  function getSubscriptionBySubscriberCount(address subscriber)
-    public
-    view
-    returns (uint)
-  {
-    return subscriberToSubs[subscriber].length();
-  }
-
-  function getSubscriptionBySubscriber(address subscriber, uint index)
-    public
-    view
-    returns (address)
-  {
-    return subscriberToSubs[subscriber].get(index);
+    emit Unsubscribed(sub.owner(), subscription, msg.sender);
   }
 }
