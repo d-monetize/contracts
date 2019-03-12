@@ -63,7 +63,7 @@ contract SubscriptionRegistry {
   {
     Subscription sub = Subscription(subscription);
 
-    delete onwerOf[subscription];
+    delete ownerOf[subscription];
     // TODO error handle when kill fails
     sub.kill();
 

@@ -76,11 +76,11 @@ contract PaymentBounty {
   function unregister(address subscription) public {
     require(isRegistered(subscription), "Subscription is not registered");
 
-    Bounty bounty = bounties[subscription];
+    Bounty storage bounty = bounties[subscription];
 
     require(msg.sender == bounty.owner, "Not subscription owner");
 
-    delete rbounties[subscription];
+    delete bounties[subscription];
 
     emit BountyUnregistered(subscription);
   }

@@ -12,7 +12,7 @@ contract Subscription is Secondary, Pausable {
     event Unsubscribed(address indexed subscriber);
     event PaymentProcessed(address indexed subscriber, uint nextPaymentAt);
 
-    address public payable owner;
+    address payable public owner;
     address public token;
     uint public amount;
     uint public interval;
@@ -32,7 +32,7 @@ contract Subscription is Secondary, Pausable {
       require(balanceAfter.sub(balanceBefore) == diff, "Check token balance failed");
     }
 
-    constructor(address _owner, address _token, uint _amount, uint _interval)
+    constructor(address payable _owner, address _token, uint _amount, uint _interval)
       public
     {
         require(_owner != address(0), "Owner address cannot be 0");
@@ -45,7 +45,7 @@ contract Subscription is Secondary, Pausable {
         amount =_amount;
         interval = _interval;
     }
-    
+
     // TODO only Owner pause / unpause
 
     function isSubscribed(address addr) public view returns (bool) {
@@ -55,7 +55,6 @@ contract Subscription is Secondary, Pausable {
     function subscribe(address subscriber) public onlyPrimary whenNotPaused {
         require(!isSubscribed(subscriber), "Address is already subscribed");
 
-        subscribers.add(subscriber);
         subscribers[subscriber] = Subscriber({
           subscribedAt: block.timestamp,
           nextPaymentAt: block.timestamp.add(interval)
