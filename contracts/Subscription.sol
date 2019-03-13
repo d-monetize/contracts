@@ -2,12 +2,9 @@ pragma solidity 0.5.2;
 
 import 'openzeppelin-solidity/contracts/ownership/Secondary.sol';
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
-import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 
 contract Subscription is Secondary, Pausable {
-    using SafeMath for uint;
-
     event Subscribed(address indexed subscriber, uint nextPaymentAt);
     event Unsubscribed(address indexed subscriber);
     event PaymentProcessed(address indexed subscriber, uint nextPaymentAt);
@@ -29,7 +26,8 @@ contract Subscription is Secondary, Pausable {
       _;
       uint balanceAfter = ERC20(token).balanceOf(addr);
 
-      require(balanceAfter.sub(balanceBefore) == diff, "Check token balance failed");
+      require(balanceAfter > balanceBefore, "Token transfer failed");
+      require(balanceAfter - balanceBefore == diff, "Check token balance failed");
     }
 
     constructor(address payable _owner, address _token, uint _amount, uint _interval)
@@ -38,7 +36,10 @@ contract Subscription is Secondary, Pausable {
         require(_owner != address(0), "Owner address cannot be 0");
         require(_token != address(0), "Token address cannot be 0");
         require(_amount > 0, "Amount must be greater than 0");
-        require(_interval > 0, "Payment interval must be greater than 0");
+        require(
+          _interval > 0 && _interval < 100 weeks,
+          "Payment interval must be greater than 0"
+        );
 
         owner = _owner;
         token = _token;
@@ -55,7 +56,7 @@ contract Subscription is Secondary, Pausable {
 
         subscribers[subscriber] = Subscriber({
           subscribedAt: block.timestamp,
-          nextPaymentAt: block.timestamp.add(interval)
+          nextPaymentAt: block.timestamp + interval
         });
 
         emit Subscribed(subscriber, subscribers[subscriber].nextPaymentAt);
@@ -93,9 +94,8 @@ contract Subscription is Secondary, Pausable {
         require(canProcessPayment(subscriber), "Cannot process payment");
 
         uint start = subscribers[subscriber].subscribedAt;
-        uint duration = block.timestamp.sub(start);
-        uint diff = duration.mod(interval);
-        uint nextPaymentAt = block.timestamp.sub(diff).add(interval);
+        uint duration = block.timestamp - start;
+        uint nextPaymentAt = block.timestamp - (duration % interval) + interval;
 
         subscribers[subscriber].nextPaymentAt =  nextPaymentAt;
 

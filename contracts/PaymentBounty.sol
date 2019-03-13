@@ -1,18 +1,9 @@
 pragma solidity 0.5.2;
 
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
-import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 import "./Subscription.sol";
 
-// TODO remove me
-// Gas used with lib
-// 1900000
-// without lib
-// 1683462
-
 contract PaymentBounty {
-  using SafeMath for uint;
-
   event BountyRegistered(
     address indexed subscription, address indexed token, uint reward
   );
@@ -42,8 +33,10 @@ contract PaymentBounty {
     _;
     uint balanceAfter = ERC20(sub.token()).balanceOf(tokenOwner);
 
+    require(balanceAfter > balanceBefore, "Token transfer failed");
+
     require(
-      balanceAfter.sub(balanceBefore) == bounty.reward,
+      balanceAfter - balanceBefore == bounty.reward,
       "Check token balance failed"
     );
   }
