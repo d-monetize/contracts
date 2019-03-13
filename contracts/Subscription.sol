@@ -46,8 +46,6 @@ contract Subscription is Secondary, Pausable {
         interval = _interval;
     }
 
-    // TODO only Owner pause / unpause
-
     function isSubscribed(address addr) public view returns (bool) {
       return subscribers[addr].subscribedAt > 0;
     }
