@@ -2,9 +2,6 @@ pragma solidity 0.5.2;
 
 import "./Subscription.sol";
 
-// TODO remove me
-// gas used with lib (without init PaymentBounty)
-// 5043949
 contract SubscriptionRegistry {
   event SubscriptionCreated(
     address indexed owner,
@@ -17,6 +14,8 @@ contract SubscriptionRegistry {
     address indexed owner,
     address indexed subscription
   );
+  event SubscriptionPaused(address indexed subscription);
+  event SubscriptionUnpaused(address indexed subscription);
   event Subscribed(
     address indexed owner,
     address indexed subscription,
@@ -28,7 +27,7 @@ contract SubscriptionRegistry {
     address indexed subscriber
   );
 
-  mapping(address => address) private ownerOf;
+  mapping(address => address) public ownerOf;
 
   modifier onlySubscriptionOwner(address owner, address subscription) {
     require(
@@ -70,6 +69,26 @@ contract SubscriptionRegistry {
     emit SubscriptionDeleted(msg.sender, subscription);
   }
 
+  function pauseSubscription(address subscription)
+    public
+    onlySubscriptionOwner(msg.sender, subscription)
+  {
+    Subscription sub = Subscription(subscription);
+    sub.pause();
+
+    emit SubscriptionPaused(subscription);
+  }
+
+  function unpauseSubscription(address subscription)
+    public
+    onlySubscriptionOwner(msg.sender, subscription)
+  {
+    Subscription sub = Subscription(subscription);
+    sub.unpause();
+
+    emit SubscriptionUnpaused(subscription);
+  }
+
   function subscribe(address subscription) public onlyRegistered(subscription) {
     Subscription sub = Subscription(subscription);
 
@@ -82,7 +101,6 @@ contract SubscriptionRegistry {
     public
     onlyRegistered(subscription)
   {
-    // TODO what happens if contract is initialized at non-existing or deleteed dcontract address
     Subscription sub = Subscription(subscription);
 
     sub.unsubscribe(msg.sender);
