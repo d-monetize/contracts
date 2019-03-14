@@ -52,11 +52,12 @@ contract Subscription is Secondary, Pausable {
     }
 
     function subscribe(address subscriber) public onlyPrimary whenNotPaused {
+        require(subscriber != address(0), "Invalid address");
         require(!isSubscribed(subscriber), "Address is already subscribed");
 
         subscribers[subscriber] = Subscriber({
           subscribedAt: block.timestamp,
-          nextPaymentAt: block.timestamp + interval
+          nextPaymentAt: block.timestamp
         });
 
         emit Subscribed(subscriber, subscribers[subscriber].nextPaymentAt);
