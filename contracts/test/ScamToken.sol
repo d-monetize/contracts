@@ -11,6 +11,11 @@ contract TestToken is ERC20 {
         _mint(msg.sender, amount);
     }
 
+    // Simulate transfer that does not transfer token
+    function transfer(address to, uint value) public returns (bool) {
+      return true;
+    }
+
     function burn(uint amount) public {
       _burn(msg.sender, amount);
     }
