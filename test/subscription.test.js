@@ -11,8 +11,8 @@ const TestToken = artifacts.require("TestToken")
 const Subscription = artifacts.require("Subscription")
 
 contract("Subscription", accounts => {
-  const PRIMARY = accounts[0]
-  const OWNER = accounts[1]
+  const OWNER = accounts[0]
+  const PAYEE = accounts[1]
   const AMOUNT = 10
   const INTERVAL = 100
 
@@ -23,22 +23,22 @@ contract("Subscription", accounts => {
 
   function newSubscription(params = {}) {
     const {
-      owner = OWNER,
+      payee = PAYEE,
       amount = AMOUNT,
       interval = INTERVAL,
       token = testToken,
-      from = PRIMARY,
+      from = OWNER,
     } = params
 
-    return Subscription.new(owner, token.address, amount, interval, { from })
+    return Subscription.new(payee, token.address, amount, interval, { from })
   }
 
   describe("constructor", () => {
     it("should initialize", async () => {
       const subscription = await newSubscription()
 
-      assert.equal(await subscription.primary(), PRIMARY, "primary mismatch")
       assert.equal(await subscription.owner(), OWNER, "owner mismatch")
+      assert.equal(await subscription.payee(), PAYEE, "payee mismatch")
       assert.equal(
         await subscription.token(),
         testToken.address,
@@ -48,8 +48,8 @@ contract("Subscription", accounts => {
       assert.equal(await subscription.interval(), INTERVAL, "interval mismatch")
     })
 
-    it("should reject if owner is zero address", async () => {
-      await expect(newSubscription({ owner: ZERO_ADDRESS })).to.be.rejected
+    it("should reject if payee is zero address", async () => {
+      await expect(newSubscription({ payee: ZERO_ADDRESS })).to.be.rejected
     })
 
     it("should reject if token is zero address", async () => {
@@ -92,7 +92,7 @@ contract("Subscription", accounts => {
       assert.equal(await subscription.isSubscribed(subscriber), true)
     })
 
-    it("should reject if not primary", async () => {
+    it("should reject if not owner", async () => {
       await expect(subscription.subscribe(accounts[2], { from: accounts[2] }))
         .to.be.rejected
     })
@@ -131,7 +131,7 @@ contract("Subscription", accounts => {
       assert.equal(await subscription.isSubscribed(subscriber), false)
     })
 
-    it("should reject if not primary", async () => {
+    it("should reject if not owner", async () => {
       await expect(subscription.unsubscribe(subscriber, { from: subscriber }))
         .to.be.rejected
     })
@@ -229,7 +229,7 @@ contract("Subscription", accounts => {
       assert.equal(await subscription.paused(), true)
     })
 
-    it("should reject if not primary", async () => {
+    it("should reject if not owner", async () => {
       await expect(subscription.pause({ from: accounts[1] })).to.be.rejected
     })
   })
@@ -248,7 +248,7 @@ contract("Subscription", accounts => {
       assert.equal(await subscription.paused(), false)
     })
 
-    it("should reject if not primary", async () => {
+    it("should reject if not owner", async () => {
       await expect(subscription.unpause({ from: accounts[1] })).to.be.rejected
     })
   })
@@ -262,10 +262,11 @@ contract("Subscription", accounts => {
 
     it("should kill", async () => {
       await subscription.kill()
+      // check if contract is deleted
       await expect(subscription.owner()).to.be.rejected
     })
 
-    it("should reject if not primary", async () => {
+    it("should reject if not owner", async () => {
       await expect(subscription.kill({ from: accounts[1] })).to.be.rejected
     })
   })
