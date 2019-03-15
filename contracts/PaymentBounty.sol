@@ -1,9 +1,10 @@
 pragma solidity 0.5.2;
 
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import "./Subscription.sol";
 
-contract PaymentBounty {
+contract PaymentBounty is Ownable {
   event BountyRegistered(
     address indexed subscription, address indexed token, uint reward
   );
@@ -16,7 +17,7 @@ contract PaymentBounty {
   );
 
   struct Bounty {
-    address owner;
+    address payer;
     uint reward;
   }
 
@@ -41,15 +42,13 @@ contract PaymentBounty {
     );
   }
 
-  function register(address subscription, uint reward) public {
+  function register(address subscription, uint reward) public onlyOwner {
     require(
       !isRegistered(subscription),
       "Subscription is already registered"
     );
 
     Subscription sub = Subscription(subscription);
-
-    require(msg.sender == sub.owner(), "Not subscription owner");
 
     require(
       sub.amount() >= reward,
@@ -59,19 +58,17 @@ contract PaymentBounty {
     require(reward > 0, "Reward must be greater than 0");
 
     bounties[subscription] = Bounty({
-      owner: sub.owner(),
+      payer: sub.payee(),
       reward: reward
     });
 
     emit BountyRegistered(subscription, sub.token(), reward);
   }
 
-  function unregister(address subscription) public {
+  function unregister(address subscription) public onlyOwner {
     require(isRegistered(subscription), "Subscription is not registered");
 
     Bounty storage bounty = bounties[subscription];
-
-    require(msg.sender == bounty.owner, "Not subscription owner");
 
     delete bounties[subscription];
 
@@ -93,7 +90,7 @@ contract PaymentBounty {
 
     ERC20 token = ERC20(sub.token());
 
-    uint allowance = token.allowance(sub.owner(), address(this));
+    uint allowance = token.allowance(sub.payee(), address(this));
     uint reward = bounties[subscription].reward;
 
     return (
@@ -119,8 +116,8 @@ contract PaymentBounty {
     uint reward = bounties[subscription].reward;
 
     require(
-      token.transferFrom(sub.owner(), msg.sender, reward),
-      "token.transfer from tokenSubscription.owner to msg.sender failed"
+      token.transferFrom(sub.payee(), msg.sender, reward),
+      "token.transfer from subscription payee to msg.sender failed"
     );
 
     emit BountyClaimed(subscription, subscriber, address(token), reward);
