@@ -4,6 +4,7 @@ chai.use(require("chai-bignumber")())
 
 const expect = chai.expect
 
+const util = require("./util")
 const { ZERO_ADDRESS, web3 } = require("./util")
 
 const ScamToken = artifacts.require("ScamToken")
@@ -27,10 +28,16 @@ contract("Subscription", accounts => {
       amount = AMOUNT,
       interval = INTERVAL,
       token = testToken,
-      from = OWNER,
+      owner = OWNER,
     } = params
 
-    return Subscription.new(payee, token.address, amount, interval, { from })
+    return util.newSubscription(accounts, {
+      payee,
+      amount,
+      interval,
+      token,
+      owner,
+    })
   }
 
   describe("constructor", () => {
