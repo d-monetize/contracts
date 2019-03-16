@@ -47,11 +47,12 @@ contract SubscriptionRegistry {
   }
 
   modifier onlyRegistered(address subscription) {
-    require(
-      ownerOf[subscription] != address(0),
-      "Subscription is not registered"
-    );
+    require(isRegistered(subscription), "Subscription is not registered");
     _;
+  }
+
+  function isRegistered(address subscription) public view returns (bool) {
+    return ownerOf[subscription] != address(0);
   }
 
   function createSubscription(address token, uint amount, uint interval)
