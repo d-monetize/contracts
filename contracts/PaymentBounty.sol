@@ -68,8 +68,6 @@ contract PaymentBounty is Ownable {
   function unregister(address subscription) public onlyOwner {
     require(isRegistered(subscription), "Subscription is not registered");
 
-    Bounty storage bounty = bounties[subscription];
-
     delete bounties[subscription];
 
     emit BountyUnregistered(subscription);
