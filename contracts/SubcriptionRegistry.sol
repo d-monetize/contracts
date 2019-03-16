@@ -1,38 +1,47 @@
 pragma solidity 0.5.2;
 
 import "./Subscription.sol";
+import "./PaymentBounty.sol";
 
 contract SubscriptionRegistry {
   event SubscriptionCreated(
-    address indexed owner,
+    address indexed payee,
     address indexed subscription,
     address indexed token,
     uint amount,
     uint interval
   );
   event SubscriptionDeleted(
-    address indexed owner,
+    address indexed payee,
     address indexed subscription
   );
   event SubscriptionPaused(address indexed subscription);
   event SubscriptionUnpaused(address indexed subscription);
   event Subscribed(
-    address indexed owner,
+    address indexed payee,
     address indexed subscription,
     address indexed subscriber
   );
   event Unsubscribed(
-    address indexed owner,
+    address indexed payee,
     address indexed subscription,
     address indexed subscriber
   );
+  event BountyRegistered(address indexed subscription);
+  event BountyUnregistered(address indexed subscription);
+
+  PaymentBounty public paymentBounty;
 
   mapping(address => address) public ownerOf;
 
-  modifier onlySubscriptionOwner(address owner, address subscription) {
+  constructor(address _paymentBounty) public {
+    paymentBounty = PaymentBounty(_paymentBounty);
+  }
+
+  modifier onlyPayee(address payee, address subscription) {
     require(
-      ownerOf[subscription] == owner,
-      "Not the owner of subscripiton"
+      ownerOf[subscription] == payee,
+      "Not the payee of subscripiton"
     );
     _;
   }
@@ -58,7 +67,7 @@ contract SubscriptionRegistry {
 
   function deleteSubscription(address subscription)
     public
-    onlySubscriptionOwner(msg.sender, subscription)
+    onlyPayee(msg.sender, subscription)
   {
     Subscription sub = Subscription(subscription);
 
@@ -66,12 +75,16 @@ contract SubscriptionRegistry {
     // TODO error handle when kill fails
     sub.kill();
 
+    if (paymentBounty.isRegistered(subscription)) {
+      paymentBounty.unregister(subscription);
+    }
+
     emit SubscriptionDeleted(msg.sender, subscription);
   }
 
   function pauseSubscription(address subscription)
     public
-    onlySubscriptionOwner(msg.sender, subscription)
+    onlyPayee(msg.sender, subscription)
   {
     Subscription sub = Subscription(subscription);
     sub.pause();
@@ -81,7 +94,7 @@ contract SubscriptionRegistry {
 
   function unpauseSubscription(address subscription)
     public
-    onlySubscriptionOwner(msg.sender, subscription)
+    onlyPayee(msg.sender, subscription)
   {
     Subscription sub = Subscription(subscription);
     sub.unpause();
@@ -94,7 +107,7 @@ contract SubscriptionRegistry {
 
     sub.subscribe(msg.sender);
 
-    emit Subscribed(sub.owner(), subscription, msg.sender);
+    emit Subscribed(sub.payee(), subscription, msg.sender);
   }
 
   function unsubscribe(address subscription)
@@ -105,6 +118,24 @@ contract SubscriptionRegistry {
 
     sub.unsubscribe(msg.sender);
 
-    emit Unsubscribed(sub.owner(), subscription, msg.sender);
+    emit Unsubscribed(sub.payee(), subscription, msg.sender);
+  }
+
+  function registerBounty(address subscription, uint reward)
+    public
+    onlyPayee(msg.sender, subscription)
+  {
+    paymentBounty.register(subscription, reward);
+
+    emit BountyRegistered(subscription);
+  }
+
+  function unregisterBounty(address subscription)
+    public
+    onlyPayee(msg.sender, subscription)
+  {
+    paymentBounty.unregister(subscription);
+
+    emit BountyUnregistered(subscription);
   }
 }
