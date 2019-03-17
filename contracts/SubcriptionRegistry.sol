@@ -73,7 +73,6 @@ contract SubscriptionRegistry {
     Subscription sub = Subscription(subscription);
 
     delete ownerOf[subscription];
-    // TODO error handle when kill fails
     sub.kill();
 
     if (paymentBounty.isRegistered(subscription)) {

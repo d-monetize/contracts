@@ -82,8 +82,6 @@ contract PaymentBounty is Ownable {
       return false;
     }
 
-    // TODO if subscription does not exist return false
-
     Subscription sub = Subscription(subscription);
 
     ERC20 token = ERC20(sub.token());
