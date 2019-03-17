@@ -1,15 +1,15 @@
 pragma solidity 0.5.2;
 
-import 'openzeppelin-solidity/contracts/ownership/Secondary.sol';
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 
-contract Subscription is Secondary, Pausable {
+contract Subscription is Ownable, Pausable {
     event Subscribed(address indexed subscriber, uint nextPaymentAt);
     event Unsubscribed(address indexed subscriber);
     event PaymentProcessed(address indexed subscriber, uint nextPaymentAt);
 
-    address payable public owner;
+    address payable public payee;
     address public token;
     uint public amount;
     uint public interval;
@@ -30,10 +30,12 @@ contract Subscription is Secondary, Pausable {
       require(balanceAfter - balanceBefore == diff, "Check token balance failed");
     }
 
-    constructor(address payable _owner, address _token, uint _amount, uint _interval)
+    constructor(
+      address payable _payee, address _token, uint _amount, uint _interval
+    )
       public
     {
-        require(_owner != address(0), "Owner address cannot be 0");
+        require(_payee != address(0), "Payee address cannot be 0");
         require(_token != address(0), "Token address cannot be 0");
         require(_amount > 0, "Amount must be greater than 0");
         require(
@@ -41,7 +43,7 @@ contract Subscription is Secondary, Pausable {
           "Payment interval must be greater than 0"
         );
 
-        owner = _owner;
+        payee = _payee;
         token = _token;
         amount =_amount;
         interval = _interval;
@@ -51,7 +53,7 @@ contract Subscription is Secondary, Pausable {
       return subscribers[addr].subscribedAt > 0;
     }
 
-    function subscribe(address subscriber) public onlyPrimary whenNotPaused {
+    function subscribe(address subscriber) public onlyOwner whenNotPaused {
         require(subscriber != address(0), "Invalid address");
         require(!isSubscribed(subscriber), "Address is already subscribed");
 
@@ -63,7 +65,7 @@ contract Subscription is Secondary, Pausable {
         emit Subscribed(subscriber, subscribers[subscriber].nextPaymentAt);
     }
 
-    function unsubscribe(address subscriber) public onlyPrimary whenNotPaused {
+    function unsubscribe(address subscriber) public onlyOwner whenNotPaused {
         require(isSubscribed(subscriber), "Not subscribed");
 
         delete subscribers[subscriber];
@@ -90,7 +92,7 @@ contract Subscription is Secondary, Pausable {
     function processPayment(address subscriber)
       public
       whenNotPaused
-      checkTokenBalanceAfterTransfer(owner, amount)
+      checkTokenBalanceAfterTransfer(payee, amount)
     {
         require(canProcessPayment(subscriber), "Cannot process payment");
 
@@ -101,14 +103,14 @@ contract Subscription is Secondary, Pausable {
         subscribers[subscriber].nextPaymentAt =  nextPaymentAt;
 
         require(
-          ERC20(token).transferFrom(subscriber, owner, amount),
+          ERC20(token).transferFrom(subscriber, payee, amount),
           "Failed to transfer tokens"
         );
 
         emit PaymentProcessed(subscriber, nextPaymentAt);
     }
 
-    function kill() external onlyPrimary {
-        selfdestruct(owner);
+    function kill() external onlyOwner {
+        selfdestruct(payee);
     }
   }
