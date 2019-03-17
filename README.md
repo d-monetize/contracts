@@ -1,5 +1,7 @@
 # contracts
 
+[![CircleCI](https://circleci.com/gh/d-monetize/contracts.svg?style=svg)](https://circleci.com/gh/d-monetize/contracts)
+
 # Development
 
 ```shell
