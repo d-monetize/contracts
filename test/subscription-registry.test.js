@@ -17,6 +17,7 @@ contract("SubscriptionRegistry", accounts => {
 
   let paymentBounty
   let subscriptionRegistry
+  let subscription
   let testToken
 
   beforeEach(async () => {
@@ -26,6 +27,19 @@ contract("SubscriptionRegistry", accounts => {
     subscriptionRegistry = await SubscriptionRegistry.new(paymentBounty.address)
 
     await paymentBounty.transferOwnership(subscriptionRegistry.address)
+
+    // create subscription
+    const tx = await subscriptionRegistry.createSubscription(
+      testToken.address,
+      100,
+      1000,
+      {
+        from: SUBSCRIPTION_PAYEE,
+      }
+    )
+
+    const { logs } = tx
+    subscription = logs[0].args.subscription
   })
 
   describe("constructor", () => {
@@ -68,22 +82,6 @@ contract("SubscriptionRegistry", accounts => {
   })
 
   describe("deleteSubscription", () => {
-    let subscription
-
-    beforeEach(async () => {
-      const tx = await subscriptionRegistry.createSubscription(
-        testToken.address,
-        100,
-        1000,
-        {
-          from: SUBSCRIPTION_PAYEE,
-        }
-      )
-
-      const { logs } = tx
-      subscription = logs[0].args.subscription
-    })
-
     it("should delete", async () => {
       const tx = await subscriptionRegistry.deleteSubscription(subscription, {
         from: SUBSCRIPTION_PAYEE,
@@ -125,22 +123,6 @@ contract("SubscriptionRegistry", accounts => {
   })
 
   describe("pauseSubscription", () => {
-    let subscription
-
-    beforeEach(async () => {
-      const tx = await subscriptionRegistry.createSubscription(
-        testToken.address,
-        100,
-        1000,
-        {
-          from: SUBSCRIPTION_PAYEE,
-        }
-      )
-
-      const { logs } = tx
-      subscription = logs[0].args.subscription
-    })
-
     it("should pause", async () => {
       const tx = await subscriptionRegistry.pauseSubscription(subscription, {
         from: SUBSCRIPTION_PAYEE,
@@ -167,21 +149,7 @@ contract("SubscriptionRegistry", accounts => {
   })
 
   describe("unpauseSubscription", () => {
-    let subscription
-
     beforeEach(async () => {
-      const tx = await subscriptionRegistry.createSubscription(
-        testToken.address,
-        100,
-        1000,
-        {
-          from: SUBSCRIPTION_PAYEE,
-        }
-      )
-
-      const { logs } = tx
-      subscription = logs[0].args.subscription
-
       await subscriptionRegistry.pauseSubscription(subscription, {
         from: SUBSCRIPTION_PAYEE,
       })
@@ -213,22 +181,6 @@ contract("SubscriptionRegistry", accounts => {
   })
 
   describe("subscribe", () => {
-    let subscription
-
-    beforeEach(async () => {
-      const tx = await subscriptionRegistry.createSubscription(
-        testToken.address,
-        100,
-        1000,
-        {
-          from: SUBSCRIPTION_PAYEE,
-        }
-      )
-
-      const { logs } = tx
-      subscription = logs[0].args.subscription
-    })
-
     it("should subscribe", async () => {
       const tx = await subscriptionRegistry.subscribe(subscription, {
         from: SUBSCRIBER,
@@ -252,21 +204,7 @@ contract("SubscriptionRegistry", accounts => {
   })
 
   describe("unsubscribe", () => {
-    let subscription
-
     beforeEach(async () => {
-      const tx = await subscriptionRegistry.createSubscription(
-        testToken.address,
-        100,
-        1000,
-        {
-          from: SUBSCRIPTION_PAYEE,
-        }
-      )
-
-      const { logs } = tx
-      subscription = logs[0].args.subscription
-
       await subscriptionRegistry.subscribe(subscription, {
         from: SUBSCRIBER,
       })
@@ -295,23 +233,6 @@ contract("SubscriptionRegistry", accounts => {
   })
 
   describe("registerBounty", () => {
-    // TODO refactor
-    let subscription
-
-    beforeEach(async () => {
-      const tx = await subscriptionRegistry.createSubscription(
-        testToken.address,
-        100,
-        1000,
-        {
-          from: SUBSCRIPTION_PAYEE,
-        }
-      )
-
-      const { logs } = tx
-      subscription = logs[0].args.subscription
-    })
-
     it("should register", async () => {
       const tx = await subscriptionRegistry.registerBounty(subscription, 1, {
         from: SUBSCRIPTION_PAYEE,
@@ -338,22 +259,7 @@ contract("SubscriptionRegistry", accounts => {
   })
 
   describe("unregisterBounty", () => {
-    // TODO refactor
-    let subscription
-
     beforeEach(async () => {
-      const tx = await subscriptionRegistry.createSubscription(
-        testToken.address,
-        100,
-        1000,
-        {
-          from: SUBSCRIPTION_PAYEE,
-        }
-      )
-
-      const { logs } = tx
-      subscription = logs[0].args.subscription
-
       await subscriptionRegistry.registerBounty(subscription, 1, {
         from: SUBSCRIPTION_PAYEE,
       })
