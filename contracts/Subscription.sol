@@ -4,6 +4,8 @@ import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 
+// TODO optional delay
+// TODO batch process payments
 contract Subscription is Ownable, Pausable {
     event Subscribed(address indexed subscriber, uint nextPaymentAt);
     event Unsubscribed(address indexed subscriber);

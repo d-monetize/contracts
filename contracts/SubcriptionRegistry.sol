@@ -3,6 +3,10 @@ pragma solidity 0.5.2;
 import "./Subscription.sol";
 import "./PaymentBounty.sol";
 
+// TODO subscriptions created count
+// TODO subscribed count
+// TODO payment processor delegation
+
 contract SubscriptionRegistry {
   event SubscriptionCreated(
     address indexed payee,
