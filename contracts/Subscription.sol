@@ -21,11 +21,10 @@ contract Subscription is Ownable, Pausable {
   constructor(address _token, uint _amount, uint _interval, uint _bounty) public {
     require(_token != address(0), "Token address cannot be 0");
     require(_amount > 0, "Amount must be greater than 0");
-    require(_bounty <= _amount, "Bounty must be less than or equal to amount");
-    // TODO interval overflow
+    require(_bounty <= _amount, "Bounty must be less than or equal amount");
     require(
-      _interval > 0,
-      "Payment interval must be greater than 0"
+      _interval > 0 && _interval <= 100 days,
+      "Interval must be greater than 0 and less than or equal to 100 days"
     );
 
     token = ERC20(_token);
@@ -74,20 +73,18 @@ contract Subscription is Ownable, Pausable {
   function charge(address subscriber) public whenNotPaused {
     require(canCharge(subscriber), "Cannot charge");
 
-    // TODO safe math?
-    // TODO assert block.timestamp >= nextPayment
     uint delta = (block.timestamp - nextPayment[subscriber]) % interval;
     nextPayment[subscriber] = block.timestamp + (interval - delta);
 
     require(
       token.transferFrom(subscriber, owner, amount),
-      "Failed to transfer tokens from subsciber to owner"
+      "Failed to transfer to owner"
     );
 
     if (bounty > 0) {
       require(
         token.transferFrom(owner, msg.sender, bounty),
-        "Failed to transfer tokens from subsciber to owner"
+        "Failed to transfer"
       );
     }
 
