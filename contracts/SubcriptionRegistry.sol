@@ -1,4 +1,3 @@
-// TODO update prragma
 pragma solidity 0.5.8;
 
 import "./Subscription.sol";
