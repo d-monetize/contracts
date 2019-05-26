@@ -1,4 +1,4 @@
-pragma solidity 0.5.2;
+pragma solidity 0.5.8;
 
 import "./Subscription.sol";
 
@@ -6,21 +6,17 @@ contract SubscriptionRegistry {
   event SubscriptionCreated(
     address indexed subscription,
     address indexed owner,
-    address indexed token
+    address indexed token,
+    uint bounty
   );
 
-  address[] public subscriptions;
+  function create(address token, uint amount, uint interval, uint bounty)
+    public
+  {
+    Subscription subscription = new Subscription(token, amount, interval, bounty);
 
-  function create(address token, uint interval, uint amount) public {
-    Subscription subscription = new Subscription(
-      msg.sender, token, amount, interval
-    );
+    subscription.transferOwnership(msg.sender);
 
-    subscriptions.append(subscription);
-
-    emit SubscriptionCreated(address(subscription), msg.sender, token);
+    emit SubscriptionCreated(address(subscription), msg.sender, token, bounty);
   }
-
-  // TODO get subscription count
-  // TODO get subscriptions
 }
