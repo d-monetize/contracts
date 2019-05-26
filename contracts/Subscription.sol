@@ -8,7 +8,7 @@ contract Subscription is Ownable, Pausable {
   event Subscribed(address indexed subscriber);
   event Unsubscribed(address indexed subscriber);
   event BountyUpdated(uint bounty);
-  event Charge(address indexed subscriber, uint nextPayment);
+  event Charged(address indexed subscriber, uint nextPayment);
 
   ERC20 public token;
   uint public amount;
@@ -33,12 +33,12 @@ contract Subscription is Ownable, Pausable {
   }
 
   function updateBounty(uint _bounty) public onlyOwner whenNotPaused {
-    bount = _bounty;
+    bounty = _bounty;
 
     emit BountyUpdated(_bounty);
   }
 
-  function isSubscribed(address subscriber) public returns (bool) {
+  function isSubscribed(address subscriber) public view returns (bool) {
     return nextPayment[subscriber] > 0;
   }
 
@@ -53,19 +53,19 @@ contract Subscription is Ownable, Pausable {
   function unsubscribe() public whenNotPaused {
     require(isSubscribed(msg.sender), "Not subscribed");
 
-    nextPayment[susbcriber] = 0;
+    nextPayment[msg.sender] = 0;
 
     emit Unsubscribed(msg.sender);
   }
 
-  function canCharge(address subscriber) public returns (bool) {
+  function canCharge(address subscriber) public view returns (bool) {
     return (
       !paused() &&
-      isSubscribed(subscribger) &&
+      isSubscribed(subscriber) &&
       block.timestamp >= nextPayment[subscriber] &&
       token.allowance(subscriber, address(this)) >= amount &&
       token.balanceOf(subscriber) >= amount &&
-      token.allowance(owner, address(this)) >= bounty
+      token.allowance(owner(), address(this)) >= bounty
     );
   }
 
@@ -76,13 +76,13 @@ contract Subscription is Ownable, Pausable {
     nextPayment[subscriber] = block.timestamp + (interval - delta);
 
     require(
-      token.transferFrom(subscriber, owner, amount),
+      token.transferFrom(subscriber, owner(), amount),
       "Failed to transfer to owner"
     );
 
     if (bounty > 0) {
       require(
-        token.transferFrom(owner, msg.sender, bounty),
+        token.transferFrom(owner(), msg.sender, bounty),
         "Failed to transfer"
       );
     }
@@ -91,6 +91,6 @@ contract Subscription is Ownable, Pausable {
   }
 
   function kill() external onlyOwner {
-    selfdestruct(owner);
+    selfdestruct(msg.sender);
   }
 }
