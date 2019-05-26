@@ -1,5 +1,5 @@
 // TODO update pragma
-pragma solidity ^0.5.2;
+pragma solidity ^0.5.8;
 
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
