@@ -1,5 +1,5 @@
 var SubscriptionRegistry = artifacts.require("./SubscriptionRegistry.sol")
 
-module.exports = async function(deployer) {
-  await deployer.deploy(SubscriptionRegistry)
+module.exports = function(deployer) {
+  deployer.deploy(SubscriptionRegistry)
 }

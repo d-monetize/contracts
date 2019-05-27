@@ -7,6 +7,8 @@ contract SubscriptionRegistry {
     address indexed subscription,
     address indexed owner,
     address indexed token,
+    uint amount,
+    uint interval,
     uint bounty
   );
 
@@ -17,6 +19,8 @@ contract SubscriptionRegistry {
 
     subscription.transferOwnership(msg.sender);
 
-    emit SubscriptionCreated(address(subscription), msg.sender, token, bounty);
+    emit SubscriptionCreated(
+      address(subscription), msg.sender, token, amount, interval, bounty
+    );
   }
 }
