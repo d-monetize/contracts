@@ -4,18 +4,16 @@ chai.use(require("chai-bignumber")())
 
 const expect = chai.expect
 
-const util = require("./util")
 const { ZERO_ADDRESS, web3 } = require("./util")
 
-const ScamToken = artifacts.require("ScamToken")
 const TestToken = artifacts.require("TestToken")
 const Subscription = artifacts.require("Subscription")
 
 contract("Subscription", accounts => {
   const OWNER = accounts[0]
-  const PAYEE = accounts[1]
   const AMOUNT = 10
-  const INTERVAL = 100
+  const INTERVAL = 3600
+  const BOUNTY = 1
 
   let testToken
   beforeEach(async () => {
@@ -24,19 +22,15 @@ contract("Subscription", accounts => {
 
   function newSubscription(params = {}) {
     const {
-      payee = PAYEE,
+      owner = OWNER,
       amount = AMOUNT,
       interval = INTERVAL,
-      token = testToken,
-      owner = OWNER,
+      bounty = BOUNTY,
+      token = testToken.address,
     } = params
 
-    return util.newSubscription(accounts, {
-      payee,
-      amount,
-      interval,
-      token,
-      owner,
+    return Subscription.new(token, amount, interval, bounty, {
+      from: owner,
     })
   }
 
@@ -45,7 +39,6 @@ contract("Subscription", accounts => {
       const subscription = await newSubscription()
 
       assert.equal(await subscription.owner(), OWNER, "owner mismatch")
-      assert.equal(await subscription.payee(), PAYEE, "payee mismatch")
       assert.equal(
         await subscription.token(),
         testToken.address,
@@ -53,15 +46,11 @@ contract("Subscription", accounts => {
       )
       assert.equal(await subscription.amount(), AMOUNT, "amount mismatch")
       assert.equal(await subscription.interval(), INTERVAL, "interval mismatch")
-    })
-
-    it("should reject if payee is zero address", async () => {
-      await expect(newSubscription({ payee: ZERO_ADDRESS })).to.be.rejected
+      assert.equal(await subscription.bounty(), BOUNTY, "bounty mismatch")
     })
 
     it("should reject if token is zero address", async () => {
-      await expect(newSubscription({ token: { address: ZERO_ADDRESS } })).to.be
-        .rejected
+      await expect(newSubscription({ token: ZERO_ADDRESS })).to.be.rejected
     })
 
     it("should reject if amount is 0", async () => {
@@ -72,9 +61,36 @@ contract("Subscription", accounts => {
       await expect(newSubscription({ interval: 0 })).to.be.rejected
     })
 
-    it("should reject if interval greater than 99 weeks", async () => {
-      await expect(newSubscription({ interval: 100 * 7 * 24 * 3600 })).to.be
+    it("should reject if interval is greater than 100 days", async () => {
+      await expect(newSubscription({ interval: 3600 * 24 * 100 + 1 })).to.be
         .rejected
+    })
+
+    it("should reject if bounty > amount", async () => {
+      await expect(newSubscription({ amount: 100, bounty: 101 })).to.be.rejected
+    })
+  })
+
+  describe("updateBounty", () => {
+    let subscription
+
+    beforeEach(async () => {
+      subscription = await newSubscription()
+    })
+
+    it("should update", async () => {
+      await subscription.updateBounty(20)
+      assert.equal(await subscription.bounty(), 20)
+    })
+
+    it("should reject if not owner", async () => {
+      await expect(subscription.updateBounty(20, { from: accounts[1] })).to.be
+        .rejected
+    })
+
+    it("should reject if paused", async () => {
+      await subscription.pause()
+      await expect(subscription.updateBounty(20)).to.be.rejected
     })
   })
 
@@ -86,7 +102,7 @@ contract("Subscription", accounts => {
 
     it("should subscribe", async () => {
       const subscriber = accounts[2]
-      const tx = await subscription.subscribe(subscriber)
+      const tx = await subscription.subscribe({ from: subscriber })
 
       const { logs } = tx
 
@@ -94,28 +110,19 @@ contract("Subscription", accounts => {
 
       assert.equal(logs[0].event, "Subscribed")
       assert.equal(logs[0].args.subscriber, subscriber)
-      assert.equal(logs[0].args.nextPaymentAt, block.timestamp)
 
+      assert.equal(await subscription.nextPayment(subscriber), block.timestamp)
       assert.equal(await subscription.isSubscribed(subscriber), true)
-    })
-
-    it("should reject if not owner", async () => {
-      await expect(subscription.subscribe(accounts[2], { from: accounts[2] }))
-        .to.be.rejected
     })
 
     it("should reject when paused", async () => {
       await subscription.pause()
-      await expect(subscription.subscribe(accounts[2])).to.be.rejected
+      await expect(subscription.subscribe({ from: accounts[2] })).to.be.rejected
     })
 
     it("should reject if already subscribed", async () => {
-      await subscription.subscribe(accounts[2])
-      await expect(subscription.subscribe(accounts[2])).to.be.rejected
-    })
-
-    it("should reject if address 0", async () => {
-      await expect(subscription.subscribe(ZERO_ADDRESS)).to.be.rejected
+      await subscription.subscribe({ from: accounts[2] })
+      await expect(subscription.subscribe({ from: accounts[2] })).to.be.rejected
     })
   })
 
@@ -125,138 +132,99 @@ contract("Subscription", accounts => {
 
     beforeEach(async () => {
       subscription = await newSubscription()
-      await subscription.subscribe(subscriber)
+      await subscription.subscribe({ from: subscriber })
     })
 
     it("should unsubscribe", async () => {
-      const tx = await subscription.unsubscribe(subscriber)
+      const tx = await subscription.unsubscribe({ from: subscriber })
 
       const { logs } = tx
 
       assert.equal(logs[0].event, "Unsubscribed")
       assert.equal(logs[0].args.subscriber, subscriber)
-      assert.equal(await subscription.isSubscribed(subscriber), false)
-    })
 
-    it("should reject if not owner", async () => {
-      await expect(subscription.unsubscribe(subscriber, { from: subscriber }))
-        .to.be.rejected
+      assert.equal(await subscription.nextPayment(subscriber), 0)
+      assert.equal(await subscription.isSubscribed(subscriber), false)
     })
 
     it("should reject when paused", async () => {
       await subscription.pause()
-      await expect(subscription.subscribe(subscriber)).to.be.rejected
+      await expect(subscription.unsubscribe({ from: subscriber })).to.be
+        .rejected
     })
 
     it("should reject if not subscribed", async () => {
-      await subscription.unsubscribe(subscriber)
-      await expect(subscription.unsubscribe(subscriber)).to.be.rejected
+      await subscription.unsubscribe({ from: subscriber })
+      await expect(subscription.unsubscribe({ from: subscriber })).to.be
+        .rejected
     })
   })
 
-  describe("processPayment", () => {
+  describe("charge", () => {
     let subscription
     const subscriber = accounts[2]
 
     beforeEach(async () => {
       subscription = await newSubscription()
 
-      await subscription.subscribe(subscriber)
+      await await subscription.subscribe({ from: subscriber })
 
+      // approval to transfer from subscriber
       await testToken.mint(100, { from: subscriber })
       await testToken.approve(subscription.address, 100, {
         from: subscriber,
       })
+
+      // approval to transfer bounty from owner
+      await testToken.approve(subscription.address, 100, {
+        from: OWNER,
+      })
     })
 
-    it("should process payment", async () => {
-      const tx = await subscription.processPayment(subscriber)
+    it("should charge", async () => {
+      // get nextPayment before payment
+      const nextPayment = await subscription.nextPayment(subscriber)
+
+      const tx = await subscription.charge(subscriber)
       const { logs } = tx
       const block = await web3.eth.getBlock(tx.receipt.blockNumber)
 
-      assert.equal(logs[0].event, "PaymentProcessed")
+      assert.equal(logs[0].event, "Charged")
       assert.equal(logs[0].args.subscriber, subscriber)
-      assert.equal(logs[0].args.nextPaymentAt, block.timestamp + INTERVAL)
+      assert.equal(
+        logs[0].args.nextPayment.toNumber(),
+        nextPayment.toNumber() + INTERVAL
+      )
 
-      assert.equal(await subscription.canProcessPayment(subscriber), false)
+      assert.equal(await subscription.canCharge(subscriber), false)
     })
 
     it("should reject when paused", async () => {
       await subscription.pause()
-      await expect(subscription.processPayment(subscriber)).to.be.rejected
+      await expect(subscription.charge(subscriber)).to.be.rejected
     })
 
     it("should reject if not subscribed", async () => {
-      await expect(subscription.processPayment(accounts[3])).to.be.rejected
+      await expect(subscription.charge(accounts[3])).to.be.rejected
     })
 
-    it("should reject if nextPaymentAt < block.timestamp", async () => {
-      await subscription.processPayment(subscriber)
-      await expect(subscription.processPayment(subscriber)).to.be.rejected
+    it("should reject if nextPayment < block.timestamp", async () => {
+      await subscription.charge(subscriber)
+      await expect(subscription.charge(subscriber)).to.be.rejected
     })
 
     it("should reject if allowance < amount", async () => {
       await testToken.approve(subscription.address, 0, {
         from: subscriber,
       })
-      await expect(subscription.processPayment(subscriber)).to.be.rejected
+      await expect(subscription.charge(subscriber)).to.be.rejected
     })
 
     it("should reject if balance < amount", async () => {
       await testToken.burn(100, {
         from: subscriber,
       })
-      await expect(subscription.processPayment(subscriber)).to.be.rejected
-    })
-
-    it("should reject if amount not transfered", async () => {
-      const token = await ScamToken.new()
-      const subscription = await newSubscription({ token })
-
-      await subscription.subscribe(accounts[2])
-
-      await token.mint(100, { from: subscriber })
-      await token.approve(subscription.address, 100, {
-        from: subscriber,
-      })
-
-      await expect(subscription.processPayment(subscriber)).to.be.rejected
-    })
-  })
-
-  describe("pause", () => {
-    let subscription
-
-    beforeEach(async () => {
-      subscription = await newSubscription()
-    })
-
-    it("should pause", async () => {
-      await subscription.pause()
-      assert.equal(await subscription.paused(), true)
-    })
-
-    it("should reject if not owner", async () => {
-      await expect(subscription.pause({ from: accounts[1] })).to.be.rejected
-    })
-  })
-
-  describe("unpause", () => {
-    let subscription
-
-    beforeEach(async () => {
-      subscription = await newSubscription()
-      await subscription.pause()
-    })
-
-    it("should unpause", async () => {
-      await subscription.unpause()
-
-      assert.equal(await subscription.paused(), false)
-    })
-
-    it("should reject if not owner", async () => {
-      await expect(subscription.unpause({ from: accounts[1] })).to.be.rejected
+      await expect(subscription.charge(subscriber)).to.be.rejected
     })
   })
 

@@ -1,116 +1,96 @@
-pragma solidity 0.5.2;
+pragma solidity 0.5.8;
 
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 
 contract Subscription is Ownable, Pausable {
-    event Subscribed(address indexed subscriber, uint nextPaymentAt);
-    event Unsubscribed(address indexed subscriber);
-    event PaymentProcessed(address indexed subscriber, uint nextPaymentAt);
+  event Subscribed(address indexed subscriber);
+  event Unsubscribed(address indexed subscriber);
+  event BountyUpdated(uint bounty);
+  event Charged(address indexed subscriber, uint nextPayment);
 
-    address payable public payee;
-    address public token;
-    uint public amount;
-    uint public interval;
+  ERC20 public token;
+  uint public amount;
+  uint public interval;
+  uint public bounty;
 
-    struct Subscriber {
-      uint subscribedAt;
-      uint nextPaymentAt;
-    }
+  mapping(address => uint) public nextPayment;
 
-    mapping(address => Subscriber) public subscribers;
+  constructor(address _token, uint _amount, uint _interval, uint _bounty) public {
+    require(_token != address(0), "Token address cannot be 0");
+    require(_amount > 0, "Amount must be greater than 0");
+    require(_bounty <= _amount, "Bounty must be less than or equal amount");
+    require(
+      _interval > 0 && _interval <= 100 days,
+      "Interval must be greater than 0 and less than or equal to 100 days"
+    );
 
-    modifier checkTokenBalanceAfterTransfer(address addr, uint diff) {
-      uint balanceBefore = ERC20(token).balanceOf(addr);
-      _;
-      uint balanceAfter = ERC20(token).balanceOf(addr);
-
-      require(balanceAfter > balanceBefore, "Token transfer failed");
-      require(balanceAfter - balanceBefore == diff, "Check token balance failed");
-    }
-
-    constructor(
-      address payable _payee, address _token, uint _amount, uint _interval
-    )
-      public
-    {
-        require(_payee != address(0), "Payee address cannot be 0");
-        require(_token != address(0), "Token address cannot be 0");
-        require(_amount > 0, "Amount must be greater than 0");
-        require(
-          _interval > 0 && _interval < 100 weeks,
-          "Payment interval must be greater than 0"
-        );
-
-        payee = _payee;
-        token = _token;
-        amount =_amount;
-        interval = _interval;
-    }
-
-    function isSubscribed(address addr) public view returns (bool) {
-      return subscribers[addr].subscribedAt > 0;
-    }
-
-    function subscribe(address subscriber) public onlyOwner whenNotPaused {
-        require(subscriber != address(0), "Invalid address");
-        require(!isSubscribed(subscriber), "Address is already subscribed");
-
-        subscribers[subscriber] = Subscriber({
-          subscribedAt: block.timestamp,
-          nextPaymentAt: block.timestamp
-        });
-
-        emit Subscribed(subscriber, subscribers[subscriber].nextPaymentAt);
-    }
-
-    function unsubscribe(address subscriber) public onlyOwner whenNotPaused {
-        require(isSubscribed(subscriber), "Not subscribed");
-
-        delete subscribers[subscriber];
-
-        emit Unsubscribed(subscriber);
-    }
-
-    function canProcessPayment(address subscriber) public view returns (bool) {
-        if (!isSubscribed(subscriber)) {
-            return false;
-        }
-
-        uint allowance = ERC20(token).allowance(subscriber, address(this));
-        uint balance = ERC20(token).balanceOf(subscriber);
-
-        return (
-            !paused() &&
-            block.timestamp >= subscribers[subscriber].nextPaymentAt &&
-            allowance >= amount &&
-            balance >= amount
-        );
-    }
-
-    function processPayment(address subscriber)
-      public
-      whenNotPaused
-      checkTokenBalanceAfterTransfer(payee, amount)
-    {
-        require(canProcessPayment(subscriber), "Cannot process payment");
-
-        uint start = subscribers[subscriber].subscribedAt;
-        uint duration = block.timestamp - start;
-        uint nextPaymentAt = block.timestamp - (duration % interval) + interval;
-
-        subscribers[subscriber].nextPaymentAt =  nextPaymentAt;
-
-        require(
-          ERC20(token).transferFrom(subscriber, payee, amount),
-          "Failed to transfer tokens"
-        );
-
-        emit PaymentProcessed(subscriber, nextPaymentAt);
-    }
-
-    function kill() external onlyOwner {
-        selfdestruct(payee);
-    }
+    token = ERC20(_token);
+    amount = _amount;
+    interval = _interval;
+    bounty = _bounty;
   }
+
+  function updateBounty(uint _bounty) public onlyOwner whenNotPaused {
+    bounty = _bounty;
+
+    emit BountyUpdated(_bounty);
+  }
+
+  function isSubscribed(address subscriber) public view returns (bool) {
+    return nextPayment[subscriber] > 0;
+  }
+
+  function subscribe() public whenNotPaused {
+    require(!isSubscribed(msg.sender), "Already subscribed");
+
+    nextPayment[msg.sender] = block.timestamp;
+
+    emit Subscribed(msg.sender);
+  }
+
+  function unsubscribe() public whenNotPaused {
+    require(isSubscribed(msg.sender), "Not subscribed");
+
+    nextPayment[msg.sender] = 0;
+
+    emit Unsubscribed(msg.sender);
+  }
+
+  function canCharge(address subscriber) public view returns (bool) {
+    return (
+      !paused() &&
+      isSubscribed(subscriber) &&
+      block.timestamp >= nextPayment[subscriber] &&
+      token.allowance(subscriber, address(this)) >= amount &&
+      token.balanceOf(subscriber) >= amount &&
+      token.allowance(owner(), address(this)) >= bounty
+    );
+  }
+
+  function charge(address subscriber) public whenNotPaused {
+    require(canCharge(subscriber), "Cannot charge");
+
+    uint delta = (block.timestamp - nextPayment[subscriber]) % interval;
+    nextPayment[subscriber] = block.timestamp + (interval - delta);
+
+    require(
+      token.transferFrom(subscriber, owner(), amount),
+      "Failed to transfer to owner"
+    );
+
+    if (bounty > 0) {
+      require(
+        token.transferFrom(owner(), msg.sender, bounty),
+        "Failed to transfer"
+      );
+    }
+
+    emit Charged(subscriber, nextPayment[subscriber]);
+  }
+
+  function kill() external onlyOwner {
+    selfdestruct(msg.sender);
+  }
+}
