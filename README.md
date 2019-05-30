@@ -35,6 +35,8 @@ npm run migrate:ropsten
 
 ##### Ropsten
 
+// TODO verify
+
 - SubscriptionRegistry `0x7251f82DDc54E367691E716b75a36d32bff95496`
 - TestToken `0x8AA545658a69195c5799eBEe6f54f5C758C91aeB`
 
@@ -43,5 +45,5 @@ npm run migrate:ropsten
 Concat contracts
 
 ```
-npx truffle-flattener -- contracts/Contract.sol
+npx truffle-flattener contracts/Contract.sol
 ```
