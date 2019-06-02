@@ -6,7 +6,6 @@ module.exports = function(deployer, network, accounts) {
       const testToken = await TestToken.deployed()
 
       await testToken.mint(1000000, { from: accounts[0] })
-      await testToken.mint(1000000, { from: accounts[1] })
     })
   }
 }
