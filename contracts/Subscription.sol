@@ -58,25 +58,25 @@ contract Subscription is Ownable, Pausable {
     emit Unsubscribed(msg.sender);
   }
 
-  function canCharge(address subscriber) public view returns (bool) {
+  function canCharge(address _subscriber) public view returns (bool) {
     return (
       !paused() &&
-      isSubscribed(subscriber) &&
-      block.timestamp >= nextPayments[subscriber] &&
-      token.allowance(subscriber, address(this)) >= amount &&
-      token.balanceOf(subscriber) >= amount &&
+      isSubscribed(_subscriber) &&
+      block.timestamp >= nextPayments[_subscriber] &&
+      token.allowance(_subscriber, address(this)) >= amount &&
+      token.balanceOf(_subscriber) >= amount &&
       token.allowance(owner(), address(this)) >= bounty
     );
   }
 
-  function charge(address subscriber) public whenNotPaused {
-    require(canCharge(subscriber), "Cannot charge");
+  function charge(address _subscriber) public whenNotPaused {
+    require(canCharge(_subscriber), "Cannot charge");
 
-    uint delta = (block.timestamp - nextPayments[subscriber]) % interval;
-    nextPayments[subscriber] = block.timestamp + (interval - delta);
+    uint delta = (block.timestamp - nextPayments[_subscriber]) % interval;
+    nextPayments[_subscriber] = block.timestamp + (interval - delta);
 
     require(
-      token.transferFrom(subscriber, owner(), amount),
+      token.transferFrom(_subscriber, owner(), amount),
       "Failed to transfer to owner"
     );
 
@@ -87,7 +87,7 @@ contract Subscription is Ownable, Pausable {
       );
     }
 
-    emit Charged(subscriber, nextPayments[subscriber]);
+    emit Charged(_subscriber, nextPayments[_subscriber]);
   }
 
   function kill() external onlyOwner {
