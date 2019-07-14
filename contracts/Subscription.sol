@@ -15,7 +15,7 @@ contract Subscription is Ownable, Pausable {
   uint public interval;
   uint public bounty;
 
-  mapping(address => uint) public nextPayment;
+  mapping(address => uint) public nextPayments;
 
   constructor(address _token, uint _amount, uint _interval, uint _bounty) public {
     require(_token != address(0), "Token address cannot be 0");
@@ -39,13 +39,13 @@ contract Subscription is Ownable, Pausable {
   }
 
   function isSubscribed(address subscriber) public view returns (bool) {
-    return nextPayment[subscriber] > 0;
+    return nextPayments[subscriber] > 0;
   }
 
   function subscribe() public whenNotPaused {
     require(!isSubscribed(msg.sender), "Already subscribed");
 
-    nextPayment[msg.sender] = block.timestamp;
+    nextPayments[msg.sender] = block.timestamp;
 
     emit Subscribed(msg.sender);
   }
@@ -53,7 +53,7 @@ contract Subscription is Ownable, Pausable {
   function unsubscribe() public whenNotPaused {
     require(isSubscribed(msg.sender), "Not subscribed");
 
-    nextPayment[msg.sender] = 0;
+    nextPayments[msg.sender] = 0;
 
     emit Unsubscribed(msg.sender);
   }
@@ -62,7 +62,7 @@ contract Subscription is Ownable, Pausable {
     return (
       !paused() &&
       isSubscribed(subscriber) &&
-      block.timestamp >= nextPayment[subscriber] &&
+      block.timestamp >= nextPayments[subscriber] &&
       token.allowance(subscriber, address(this)) >= amount &&
       token.balanceOf(subscriber) >= amount &&
       token.allowance(owner(), address(this)) >= bounty
@@ -72,8 +72,8 @@ contract Subscription is Ownable, Pausable {
   function charge(address subscriber) public whenNotPaused {
     require(canCharge(subscriber), "Cannot charge");
 
-    uint delta = (block.timestamp - nextPayment[subscriber]) % interval;
-    nextPayment[subscriber] = block.timestamp + (interval - delta);
+    uint delta = (block.timestamp - nextPayments[subscriber]) % interval;
+    nextPayments[subscriber] = block.timestamp + (interval - delta);
 
     require(
       token.transferFrom(subscriber, owner(), amount),
@@ -87,7 +87,7 @@ contract Subscription is Ownable, Pausable {
       );
     }
 
-    emit Charged(subscriber, nextPayment[subscriber]);
+    emit Charged(subscriber, nextPayments[subscriber]);
   }
 
   function kill() external onlyOwner {
