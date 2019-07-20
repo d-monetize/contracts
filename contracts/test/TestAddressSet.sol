@@ -1,6 +1,6 @@
 pragma solidity 0.5.8;
 
-import "../AddressSetLib.sol";
+import "../lib/AddressSetLib.sol";
 
 contract TestAddressSet {
   using AddressSetLib for AddressSetLib.AddressSet;
