@@ -1,6 +1,7 @@
 pragma solidity 0.5.8;
 
 import "./Subscription.sol";
+import "./SubscriptionRegistry.sol";
 
 contract SubscriptionFactory {
   event SubscriptionCreated(
@@ -11,6 +12,12 @@ contract SubscriptionFactory {
     uint interval,
     uint bounty
   );
+
+  SubscriptionRegistry public subscriptionRegistry;
+
+  constructor() public {
+    subscriptionRegistry = new SubscriptionRegistry();
+  }
 
   function create(address _token, uint _amount, uint _interval, uint _bounty)
     public

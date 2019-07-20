@@ -19,6 +19,15 @@ contract("SubscriptionFactory", accounts => {
     subscriptionFactory = await SubscriptionFactory.new()
   })
 
+  describe("constructor", () => {
+    it("should initialize SubscriptionRegistry", async () => {
+      assert.notEqual(
+        await subscriptionFactory.subscriptionRegistry(),
+        ZERO_ADDRESS
+      )
+    })
+  })
+
   it("should create", async () => {
     const testToken = await TestToken.new()
     const amount = 100
