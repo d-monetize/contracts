@@ -7,16 +7,16 @@ const expect = chai.expect
 const { ZERO_ADDRESS, web3 } = require("./util")
 
 const TestToken = artifacts.require("TestToken")
-const SubscriptionRegistry = artifacts.require("SubscriptionRegistry")
+const SubscriptionFactory = artifacts.require("SubscriptionFactory")
 
-contract("SubscriptionRegistry", accounts => {
+contract("SubscriptionFactory", accounts => {
   const SUBSCRIPTION_OWNER = accounts[1]
   const SUBSCRIBER = accounts[2]
 
-  let subscriptionRegistry
+  let subscriptionFactory
 
   beforeEach(async () => {
-    subscriptionRegistry = await SubscriptionRegistry.new()
+    subscriptionFactory = await SubscriptionFactory.new()
   })
 
   it("should create", async () => {
@@ -25,7 +25,7 @@ contract("SubscriptionRegistry", accounts => {
     const interval = 3600
     const bounty = 1
 
-    const tx = await subscriptionRegistry.create(
+    const tx = await subscriptionFactory.create(
       testToken.address,
       amount,
       interval,
