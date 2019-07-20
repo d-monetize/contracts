@@ -1,7 +1,7 @@
 pragma solidity 0.5.8;
 
-import "./Subscription.sol";
 import "./SubscriptionRegistry.sol";
+import "./SubscriptionWithRegistry.sol";
 
 contract SubscriptionFactory {
   event SubscriptionCreated(
@@ -22,11 +22,12 @@ contract SubscriptionFactory {
   function create(address _token, uint _amount, uint _interval, uint _bounty)
     public
   {
-    Subscription subscription = new Subscription(
+    SubscriptionWithRegistry subscription = new SubscriptionWithRegistry(
       _token,
       _amount,
       _interval,
-      _bounty
+      _bounty,
+      address(subscriptionRegistry)
     );
 
     subscription.transferOwnership(msg.sender);
