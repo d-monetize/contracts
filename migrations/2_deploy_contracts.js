@@ -1,5 +1,5 @@
-var SubscriptionRegistry = artifacts.require("./SubscriptionRegistry.sol")
+var SubscriptionFactory = artifacts.require("./SubscriptionFactory.sol")
 
 module.exports = function(deployer) {
-  deployer.deploy(SubscriptionRegistry)
+  deployer.deploy(SubscriptionFactory)
 }
