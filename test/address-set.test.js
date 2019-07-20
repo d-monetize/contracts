@@ -8,7 +8,7 @@ const { ZERO_ADDRESS, web3 } = require("./util")
 
 const TestAddressSet = artifacts.require("TestAddressSet")
 
-contract("AddressSetLib", accounts => {
+contract("AddressSet", accounts => {
   let addressSet
   beforeEach(async () => {
     addressSet = await TestAddressSet.new()

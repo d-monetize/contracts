@@ -1,11 +1,11 @@
 pragma solidity 0.5.8;
 
-import "../lib/AddressSetLib.sol";
+import "../lib/Set.sol";
 
 contract TestAddressSet {
-  using AddressSetLib for AddressSetLib.AddressSet;
+  using Set for Set.Address;
 
-  AddressSetLib.AddressSet internal set;
+  Set.Address internal set;
 
   function add(address _addr) public {
     set.add(_addr);
