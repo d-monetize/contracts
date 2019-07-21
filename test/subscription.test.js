@@ -111,7 +111,7 @@ contract("Subscription", accounts => {
       assert.equal(logs[0].event, "Subscribed")
       assert.equal(logs[0].args.subscriber, subscriber)
 
-      assert.equal(await subscription.nextPayment(subscriber), block.timestamp)
+      assert.equal(await subscription.nextPayments(subscriber), block.timestamp)
       assert.equal(await subscription.isSubscribed(subscriber), true)
     })
 
@@ -143,7 +143,7 @@ contract("Subscription", accounts => {
       assert.equal(logs[0].event, "Unsubscribed")
       assert.equal(logs[0].args.subscriber, subscriber)
 
-      assert.equal(await subscription.nextPayment(subscriber), 0)
+      assert.equal(await subscription.nextPayments(subscriber), 0)
       assert.equal(await subscription.isSubscribed(subscriber), false)
     })
 
@@ -182,8 +182,8 @@ contract("Subscription", accounts => {
     })
 
     it("should charge", async () => {
-      // get nextPayment before payment
-      const nextPayment = await subscription.nextPayment(subscriber)
+      // get nextPayments before payment
+      const nextPayment = await subscription.nextPayments(subscriber)
 
       const tx = await subscription.charge(subscriber)
       const { logs } = tx
