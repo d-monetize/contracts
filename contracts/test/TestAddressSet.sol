@@ -22,4 +22,8 @@ contract TestAddressSet {
   function count() public view returns (uint) {
     return set.count();
   }
+
+  function contains(address _addr) public view returns (bool) {
+    return set.contains(_addr);
+  }
 }

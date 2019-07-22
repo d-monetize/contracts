@@ -20,6 +20,8 @@ contract("AddressSet", accounts => {
 
       assert.equal(await addressSet.count(), 1)
       assert.equal(await addressSet.get(0), accounts[0])
+
+      assert.equal(await addressSet.contains(accounts[0]), true)
     })
 
     it("should reject if already added", async () => {
@@ -42,6 +44,8 @@ contract("AddressSet", accounts => {
       assert.equal(await addressSet.count(), 2)
       assert.equal(await addressSet.get(0), accounts[0])
       assert.equal(await addressSet.get(1), accounts[2])
+
+      assert.equal(await addressSet.contains(accounts[1]), false)
     })
 
     it("should reject if not added", async () => {

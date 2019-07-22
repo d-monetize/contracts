@@ -30,11 +30,19 @@ library Set {
     delete self.inserted[_addr];
   }
 
-  function get(Address storage self, uint _index) internal view returns (address) {
+  function get(Address storage self, uint _index)
+    internal view returns (address)
+  {
     return self.elements[_index];
   }
 
   function count(Address storage self) internal view returns (uint) {
     return self.elements.length;
+  }
+
+  function contains(Address storage self, address _addr)
+    internal view returns (bool)
+  {
+    return self.inserted[_addr];
   }
 }
