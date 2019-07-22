@@ -55,7 +55,7 @@ contract("SubscriptionRegistry", accounts => {
         SUBSCRIPTION_CONTRACT_2
       )
       assert.equal(
-        await subscriptionRegistry.isRegistered(SUBSCRIPTION_CONTRACT_2),
+        await subscriptionRegistry.authorized(SUBSCRIPTION_CONTRACT_2),
         true
       )
       assert.equal(
@@ -108,7 +108,7 @@ contract("SubscriptionRegistry", accounts => {
         0
       )
       assert.equal(
-        await subscriptionRegistry.isRegistered(SUBSCRIPTION_CONTRACT_2),
+        await subscriptionRegistry.authorized(SUBSCRIPTION_CONTRACT_2),
         false
       )
       assert.equal(

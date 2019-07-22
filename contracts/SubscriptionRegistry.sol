@@ -20,13 +20,11 @@ contract SubscriptionRegistry is Ownable {
   // mapping from subscription to owner
   mapping(address => address) public ownerOf;
 
-  modifier onlyRegistered() {
-    require(isRegistered(msg.sender), "Subscription is not registered");
-    _;
-  }
+  mapping(address => bool) public authorized;
 
-  function isRegistered(address _subscription) public view returns (bool) {
-    return ownerOf[_subscription] != address(0);
+  modifier onlyAuthorized() {
+    require(authorized[msg.sender], "Subscription is not authorized");
+    _;
   }
 
   function addSubscription(address _subscription, address _owner)
@@ -35,26 +33,29 @@ contract SubscriptionRegistry is Ownable {
     createdBy[_owner].add(_subscription);
 
     ownerOf[_subscription] = _owner;
+    authorized[_subscription] = true;
 
     emit SubscriptionCreated(_subscription, _owner);
   }
 
-  function removeSubscription() onlyRegistered public {
+  function removeSubscription() onlyAuthorized public {
     address owner = ownerOf[msg.sender];
+    
     delete ownerOf[msg.sender];
+    delete authorized[msg.sender];
 
     createdBy[owner].remove(msg.sender);
 
     emit SubscriptionDeleted(msg.sender, owner);
   }
 
-  function addSubscriber(address _subscriber) onlyRegistered public {
+  function addSubscriber(address _subscriber) onlyAuthorized public {
     subscribedBy[_subscriber].add(msg.sender);
 
     emit SubscriberAdded(msg.sender, _subscriber);
   }
 
-  function removeSubscriber(address _subscriber) onlyRegistered public {
+  function removeSubscriber(address _subscriber) onlyAuthorized public {
     subscribedBy[_subscriber].remove(msg.sender);
 
     emit SubscriberRemoved(msg.sender, _subscriber);
