@@ -113,6 +113,8 @@ contract("Subscription", accounts => {
 
       assert.equal(await subscription.nextPayments(subscriber), block.timestamp)
       assert.equal(await subscription.isSubscribed(subscriber), true)
+      assert.equal(await subscription.getSubscriberCount(), 1)
+      assert.equal(await subscription.getSubscriber(0), accounts[2])
     })
 
     it("should reject when paused", async () => {
@@ -145,6 +147,7 @@ contract("Subscription", accounts => {
 
       assert.equal(await subscription.nextPayments(subscriber), 0)
       assert.equal(await subscription.isSubscribed(subscriber), false)
+      assert.equal(await subscription.getSubscriberCount(), 0)
     })
 
     it("should reject when paused", async () => {

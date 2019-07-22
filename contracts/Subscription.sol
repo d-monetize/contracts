@@ -3,8 +3,11 @@ pragma solidity 0.5.8;
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import "./lib/Set.sol";
 
 contract Subscription is Ownable, Pausable {
+  using Set for Set.Address;
+
   event Subscribed(address indexed subscriber);
   event Unsubscribed(address indexed subscriber);
   event BountyUpdated(uint bounty);
@@ -16,6 +19,7 @@ contract Subscription is Ownable, Pausable {
   uint public bounty;
 
   mapping(address => uint) public nextPayments;
+  Set.Address internal subscribers;
 
   constructor(address _token, uint _amount, uint _interval, uint _bounty) public {
     require(_token != address(0), "Token address cannot be 0");
@@ -38,13 +42,14 @@ contract Subscription is Ownable, Pausable {
     emit BountyUpdated(_bounty);
   }
 
-  function isSubscribed(address subscriber) public view returns (bool) {
-    return nextPayments[subscriber] > 0;
+  function isSubscribed(address _subscriber) public view returns (bool) {
+    return subscribers.contains(_subscriber);
   }
 
   function subscribe() public whenNotPaused {
     require(!isSubscribed(msg.sender), "Already subscribed");
 
+    subscribers.add(msg.sender);
     nextPayments[msg.sender] = block.timestamp;
 
     emit Subscribed(msg.sender);
@@ -53,6 +58,7 @@ contract Subscription is Ownable, Pausable {
   function unsubscribe() public whenNotPaused {
     require(isSubscribed(msg.sender), "Not subscribed");
 
+    subscribers.remove(msg.sender);
     nextPayments[msg.sender] = 0;
 
     emit Unsubscribed(msg.sender);
@@ -88,6 +94,14 @@ contract Subscription is Ownable, Pausable {
     }
 
     emit Charged(_subscriber, nextPayments[_subscriber]);
+  }
+
+  function getSubscriberCount() public view returns (uint) {
+    return subscribers.count();
+  }
+
+  function getSubscriber(uint _index) public view returns (address) {
+    return subscribers.get(_index);
   }
 
   function kill() external onlyOwner {
