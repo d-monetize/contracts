@@ -8,15 +8,21 @@ const { ZERO_ADDRESS, web3 } = require("./util")
 
 const TestToken = artifacts.require("TestToken")
 const SubscriptionFactory = artifacts.require("SubscriptionFactory")
+const SubscriptionRegistry = artifacts.require("SubscriptionRegistry")
+const Subscription = artifacts.require("Subscription")
 
 contract("SubscriptionFactory", accounts => {
   const SUBSCRIPTION_OWNER = accounts[1]
   const SUBSCRIBER = accounts[2]
 
   let subscriptionFactory
+  let subscriptionRegistry
 
   beforeEach(async () => {
     subscriptionFactory = await SubscriptionFactory.new()
+    subscriptionRegistry = await SubscriptionRegistry.at(
+      await subscriptionFactory.subscriptionRegistry()
+    )
   })
 
   describe("constructor", () => {
@@ -52,5 +58,18 @@ contract("SubscriptionFactory", accounts => {
     assert.equal(logs[0].args.amount, amount)
     assert.equal(logs[0].args.interval, interval)
     assert.equal(logs[0].args.bounty, bounty)
+
+    const subscription = await Subscription.at(logs[0].args.subscription)
+
+    assert.equal(await subscription.owner(), SUBSCRIPTION_OWNER)
+
+    assert.equal(
+      await subscriptionRegistry.getCreatedByCount(SUBSCRIPTION_OWNER),
+      1
+    )
+    assert.equal(
+      await subscriptionRegistry.getCreatedBy(SUBSCRIPTION_OWNER, 0),
+      subscription.address
+    )
   })
 })

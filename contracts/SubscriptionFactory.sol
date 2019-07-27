@@ -32,6 +32,8 @@ contract SubscriptionFactory {
 
     subscription.transferOwnership(msg.sender);
 
+    subscriptionRegistry.addSubscription(address(subscription), msg.sender);
+
     emit SubscriptionCreated(
       address(subscription), msg.sender, _token, _amount, _interval, _bounty
     );
