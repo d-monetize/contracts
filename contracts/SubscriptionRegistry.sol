@@ -6,10 +6,20 @@ import "./lib/Set.sol";
 contract SubscriptionRegistry is Ownable {
   using Set for Set.Address;
 
-  event SubscriptionCreated(address indexed subscription, address indexed owner);
-  event SubscriptionDeleted(address indexed subscription, address indexed owner);
-  event SubscriberAdded(address indexed subscription, address indexed subscriber);
-  event SubscriberRemoved(address indexed subscription, address indexed subscriber);
+  event SubscriptionCreated(
+    address indexed subscription, address indexed owner
+  );
+  event SubscriptionDeleted(
+    address indexed subscription, address indexed owner
+  );
+  event SubscriberAdded(
+    address indexed subscription, address indexed subscriber
+  );
+  event SubscriberRemoved(
+    address indexed subscription, address indexed subscriber
+  );
+
+  Set.Address internal subscriptions;
 
   // subscriptions created by an address
   mapping(address => Set.Address) internal createdBy;
@@ -30,6 +40,7 @@ contract SubscriptionRegistry is Ownable {
   function addSubscription(address _subscription, address _owner)
     public onlyOwner
   {
+    subscriptions.add(_subscription);
     createdBy[_owner].add(_subscription);
 
     ownerOf[_subscription] = _owner;
@@ -40,10 +51,11 @@ contract SubscriptionRegistry is Ownable {
 
   function removeSubscription() onlyAuthorized public {
     address owner = ownerOf[msg.sender];
-    
+
     delete ownerOf[msg.sender];
     delete authorized[msg.sender];
 
+    subscriptions.remove(msg.sender);
     createdBy[owner].remove(msg.sender);
 
     emit SubscriptionDeleted(msg.sender, owner);
@@ -59,6 +71,14 @@ contract SubscriptionRegistry is Ownable {
     subscribedBy[_subscriber].remove(msg.sender);
 
     emit SubscriberRemoved(msg.sender, _subscriber);
+  }
+
+  function getSubscriptionCount() public view returns (uint) {
+    return subscriptions.count();
+  }
+
+  function getSubscription(uint _index) public view returns (address) {
+    return subscriptions.get(_index);
   }
 
   function getCreatedByCount(address _owner)

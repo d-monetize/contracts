@@ -46,6 +46,12 @@ contract("SubscriptionRegistry", accounts => {
       assert.equal(logs[0].args.subscription, SUBSCRIPTION_CONTRACT_2)
       assert.equal(logs[0].args.owner, SUBSCRIPTION_OWNER)
 
+      assert.equal(await subscriptionRegistry.getSubscriptionCount(), 2)
+      assert.equal(
+        await subscriptionRegistry.getSubscription(1),
+        SUBSCRIPTION_CONTRACT_2
+      )
+
       assert.equal(
         await subscriptionRegistry.getCreatedByCount(SUBSCRIPTION_OWNER),
         2
@@ -102,6 +108,8 @@ contract("SubscriptionRegistry", accounts => {
       assert.equal(logs[0].event, "SubscriptionDeleted")
       assert.equal(logs[0].args.subscription, SUBSCRIPTION_CONTRACT_1)
       assert.equal(logs[0].args.owner, SUBSCRIPTION_OWNER)
+
+      assert.equal(await subscriptionRegistry.getSubscriptionCount(), 0)
 
       assert.equal(
         await subscriptionRegistry.getCreatedByCount(SUBSCRIPTION_OWNER),
