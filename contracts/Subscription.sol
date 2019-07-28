@@ -3,8 +3,11 @@ pragma solidity 0.5.8;
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import "./lib/Set.sol";
 
 contract Subscription is Ownable, Pausable {
+  using Set for Set.Address;
+
   event Subscribed(address indexed subscriber);
   event Unsubscribed(address indexed subscriber);
   event BountyUpdated(uint bounty);
@@ -15,7 +18,8 @@ contract Subscription is Ownable, Pausable {
   uint public interval;
   uint public bounty;
 
-  mapping(address => uint) public nextPayment;
+  mapping(address => uint) public nextPayments;
+  Set.Address internal subscribers;
 
   constructor(address _token, uint _amount, uint _interval, uint _bounty) public {
     require(_token != address(0), "Token address cannot be 0");
@@ -38,14 +42,15 @@ contract Subscription is Ownable, Pausable {
     emit BountyUpdated(_bounty);
   }
 
-  function isSubscribed(address subscriber) public view returns (bool) {
-    return nextPayment[subscriber] > 0;
+  function isSubscribed(address _subscriber) public view returns (bool) {
+    return subscribers.contains(_subscriber);
   }
 
   function subscribe() public whenNotPaused {
     require(!isSubscribed(msg.sender), "Already subscribed");
 
-    nextPayment[msg.sender] = block.timestamp;
+    subscribers.add(msg.sender);
+    nextPayments[msg.sender] = block.timestamp;
 
     emit Subscribed(msg.sender);
   }
@@ -53,30 +58,31 @@ contract Subscription is Ownable, Pausable {
   function unsubscribe() public whenNotPaused {
     require(isSubscribed(msg.sender), "Not subscribed");
 
-    nextPayment[msg.sender] = 0;
+    subscribers.remove(msg.sender);
+    nextPayments[msg.sender] = 0;
 
     emit Unsubscribed(msg.sender);
   }
 
-  function canCharge(address subscriber) public view returns (bool) {
+  function canCharge(address _subscriber) public view returns (bool) {
     return (
       !paused() &&
-      isSubscribed(subscriber) &&
-      block.timestamp >= nextPayment[subscriber] &&
-      token.allowance(subscriber, address(this)) >= amount &&
-      token.balanceOf(subscriber) >= amount &&
+      isSubscribed(_subscriber) &&
+      block.timestamp >= nextPayments[_subscriber] &&
+      token.allowance(_subscriber, address(this)) >= amount &&
+      token.balanceOf(_subscriber) >= amount &&
       token.allowance(owner(), address(this)) >= bounty
     );
   }
 
-  function charge(address subscriber) public whenNotPaused {
-    require(canCharge(subscriber), "Cannot charge");
+  function charge(address _subscriber) public whenNotPaused {
+    require(canCharge(_subscriber), "Cannot charge");
 
-    uint delta = (block.timestamp - nextPayment[subscriber]) % interval;
-    nextPayment[subscriber] = block.timestamp + (interval - delta);
+    uint delta = (block.timestamp - nextPayments[_subscriber]) % interval;
+    nextPayments[_subscriber] = block.timestamp + (interval - delta);
 
     require(
-      token.transferFrom(subscriber, owner(), amount),
+      token.transferFrom(_subscriber, owner(), amount),
       "Failed to transfer to owner"
     );
 
@@ -87,7 +93,15 @@ contract Subscription is Ownable, Pausable {
       );
     }
 
-    emit Charged(subscriber, nextPayment[subscriber]);
+    emit Charged(_subscriber, nextPayments[_subscriber]);
+  }
+
+  function getSubscriberCount() public view returns (uint) {
+    return subscribers.count();
+  }
+
+  function getSubscriber(uint _index) public view returns (address) {
+    return subscribers.get(_index);
   }
 
   function kill() external onlyOwner {
