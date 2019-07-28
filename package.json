@@ -9,7 +9,7 @@
   "scripts": {
     "chain": "ganache-cli",
     "migrate:dev": "truffle migrate --compile-all --network development",
-    "migrate:ropsten": "truffle migrate --compile-all --network ropsten --reset",
+    "migrate:ropsten": "truffle migrate --compile-all --network ropsten",
     "test": "truffle test"
   },
   "repository": {
