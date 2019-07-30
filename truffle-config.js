@@ -62,10 +62,16 @@ module.exports = {
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
     ropsten: {
-      provider: new HDWalletProvider(
-        process.env.HD_WALLET_MNEMONIC,
-        `https://ropsten.infura.io/v3/${process.env.INFURA_API_KEY}`
-      ),
+      provider: () =>
+        new HDWalletProvider(
+          process.env.HD_WALLET_MNEMONIC,
+          `https://ropsten.infura.io/v3/${process.env.INFURA_API_KEY}`
+        ),
+      // // NOTE: try this if above is failing
+      // provider: new HDWalletProvider(
+      //   process.env.HD_WALLET_MNEMONIC,
+      //   `https://ropsten.infura.io/v3/${process.env.INFURA_API_KEY}`
+      // ),
       network_id: 3, // Ropsten's id
       gas: 5500000, // Ropsten has a lower block limit than mainnet
       confirmations: 2, // # of confs to wait between deployments. (default: 0)
