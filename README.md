@@ -20,6 +20,8 @@ npm run migrate:dev
 npm run chain
 # From another terminal
 npm test
+
+env $(cat .env.mythx) truffle run verify
 ```
 
 ### Migration (Ropsten)
