@@ -11,7 +11,12 @@ contract Subscription is Ownable, Pausable {
   event Subscribed(address indexed subscriber);
   event Unsubscribed(address indexed subscriber);
   event BountyUpdated(uint bounty);
-  event Charged(address indexed subscriber, uint nextPayment);
+  event Charged(
+    address indexed subscriber,
+    uint paymentFor,
+    uint paymentAt,
+    uint nextPayment
+  );
 
   ERC20 public token;
   uint public amount;
@@ -78,6 +83,8 @@ contract Subscription is Ownable, Pausable {
   function charge(address _subscriber) public whenNotPaused {
     require(canCharge(_subscriber), "Cannot charge");
 
+    uint paymentFor = nextPayments[_subscriber];
+
     uint delta = (block.timestamp - nextPayments[_subscriber]) % interval;
     nextPayments[_subscriber] = block.timestamp + (interval - delta);
 
@@ -93,7 +100,7 @@ contract Subscription is Ownable, Pausable {
       );
     }
 
-    emit Charged(_subscriber, nextPayments[_subscriber]);
+    emit Charged(_subscriber, paymentFor, block.timestamp, nextPayments[_subscriber]);
   }
 
   function getSubscriberCount() public view returns (uint) {
