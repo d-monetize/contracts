@@ -37,8 +37,8 @@ npm run migrate:ropsten
 
 ##### Ropsten
 
-- SubscriptionFactory `0x7a00Ecd9a4284a3DA7aCC69c656BAE7AC959e935`
-- TestToken `0xaB01CeaFb134905Fc301165cbc7dB2409eCE0739`
+- SubscriptionFactory `0xFAb207d5E488C7BCD10442Fe83fFc2775F0617Bb`
+- TestToken `0xf7e6C56A1D35d56cAb563AEC50B2efd1b76e0882`
 
 ### Misc
 
