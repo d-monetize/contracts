@@ -194,6 +194,8 @@ contract("Subscription", accounts => {
 
       assert.equal(logs[0].event, "Charged")
       assert.equal(logs[0].args.subscriber, subscriber)
+      assert.equal(logs[0].args.paymentFor, nextPayment.toNumber())
+      assert.equal(logs[0].args.paymentAt, block.timestamp)
       assert.equal(
         logs[0].args.nextPayment.toNumber(),
         nextPayment.toNumber() + INTERVAL
